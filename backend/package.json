@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "jest --runInBand",
     "prisma:generate": "prisma generate",
-    "prisma:migrate": "tsx prisma/apply-migration.ts && prisma generate",
+    "preprisma:migrate": "tsx prisma/ensure-sqlite-db.ts",
+    "prisma:migrate": "prisma migrate deploy && prisma generate",
     "prisma:migrate:dev": "prisma migrate dev",
     "prisma:seed": "prisma db seed",
     "prisma:studio": "prisma studio"
@@ -19,7 +20,7 @@
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
-    "@prisma/client": "^6.4.1",
+    "@prisma/client": "6.4.1",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
@@ -36,7 +37,7 @@
     "@types/node": "^22.13.10",
     "@types/supertest": "^6.0.2",
     "jest": "^29.7.0",
-    "prisma": "^6.4.1",
+    "prisma": "6.4.1",
     "supertest": "^7.0.0",
     "ts-jest": "^29.2.6",
     "tsx": "^4.19.3",

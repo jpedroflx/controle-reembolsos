@@ -1,5 +1,5 @@
 -- CreateTable
-CREATE TABLE IF NOT EXISTS "User" (
+CREATE TABLE "User" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "name" TEXT NOT NULL,
     "email" TEXT NOT NULL,
@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS "User" (
 );
 
 -- CreateTable
-CREATE TABLE IF NOT EXISTS "Category" (
+CREATE TABLE "Category" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "name" TEXT NOT NULL,
     "active" BOOLEAN NOT NULL DEFAULT true,
@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS "Category" (
 );
 
 -- CreateTable
-CREATE TABLE IF NOT EXISTS "ReimbursementRequest" (
+CREATE TABLE "ReimbursementRequest" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "requesterId" TEXT NOT NULL,
     "categoryId" TEXT NOT NULL,
@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS "ReimbursementRequest" (
 );
 
 -- CreateTable
-CREATE TABLE IF NOT EXISTS "Attachment" (
+CREATE TABLE "Attachment" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "requestId" TEXT NOT NULL,
     "fileName" TEXT NOT NULL,
@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS "Attachment" (
 );
 
 -- CreateTable
-CREATE TABLE IF NOT EXISTS "ReimbursementHistory" (
+CREATE TABLE "ReimbursementHistory" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "requestId" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
@@ -58,34 +58,34 @@ CREATE TABLE IF NOT EXISTS "ReimbursementHistory" (
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX IF NOT EXISTS "User_email_key" ON "User"("email");
+CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 
 -- CreateIndex
-CREATE INDEX IF NOT EXISTS "User_role_idx" ON "User"("role");
+CREATE INDEX "User_role_idx" ON "User"("role");
 
 -- CreateIndex
-CREATE UNIQUE INDEX IF NOT EXISTS "Category_name_key" ON "Category"("name");
+CREATE UNIQUE INDEX "Category_name_key" ON "Category"("name");
 
 -- CreateIndex
-CREATE INDEX IF NOT EXISTS "ReimbursementRequest_requesterId_idx" ON "ReimbursementRequest"("requesterId");
+CREATE INDEX "ReimbursementRequest_requesterId_idx" ON "ReimbursementRequest"("requesterId");
 
 -- CreateIndex
-CREATE INDEX IF NOT EXISTS "ReimbursementRequest_categoryId_idx" ON "ReimbursementRequest"("categoryId");
+CREATE INDEX "ReimbursementRequest_categoryId_idx" ON "ReimbursementRequest"("categoryId");
 
 -- CreateIndex
-CREATE INDEX IF NOT EXISTS "ReimbursementRequest_status_idx" ON "ReimbursementRequest"("status");
+CREATE INDEX "ReimbursementRequest_status_idx" ON "ReimbursementRequest"("status");
 
 -- CreateIndex
-CREATE INDEX IF NOT EXISTS "ReimbursementRequest_expenseDate_idx" ON "ReimbursementRequest"("expenseDate");
+CREATE INDEX "ReimbursementRequest_expenseDate_idx" ON "ReimbursementRequest"("expenseDate");
 
 -- CreateIndex
-CREATE INDEX IF NOT EXISTS "Attachment_requestId_idx" ON "Attachment"("requestId");
+CREATE INDEX "Attachment_requestId_idx" ON "Attachment"("requestId");
 
 -- CreateIndex
-CREATE INDEX IF NOT EXISTS "ReimbursementHistory_requestId_idx" ON "ReimbursementHistory"("requestId");
+CREATE INDEX "ReimbursementHistory_requestId_idx" ON "ReimbursementHistory"("requestId");
 
 -- CreateIndex
-CREATE INDEX IF NOT EXISTS "ReimbursementHistory_userId_idx" ON "ReimbursementHistory"("userId");
+CREATE INDEX "ReimbursementHistory_userId_idx" ON "ReimbursementHistory"("userId");
 
 -- CreateIndex
-CREATE INDEX IF NOT EXISTS "ReimbursementHistory_action_idx" ON "ReimbursementHistory"("action");
+CREATE INDEX "ReimbursementHistory_action_idx" ON "ReimbursementHistory"("action");
