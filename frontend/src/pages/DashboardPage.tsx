@@ -39,7 +39,7 @@ import { EmptyState } from "../components/EmptyState";
 import { PageHeader } from "../components/PageHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { useAuth } from "../contexts/AuthContext";
-import type { ReimbursementSummary } from "../types/reimbursements";
+import type { ReimbursementListMeta, ReimbursementListResponse, ReimbursementSummary } from "../types/reimbursements";
 import { getApiErrorMessage, getApiErrorStatus } from "../utils/apiErrors";
 
 type ReimbursementAction = "submit" | "approve" | "reject" | "pay" | "cancel";
@@ -75,6 +75,12 @@ export function DashboardPage() {
   const toast = useToast();
   const rejectModal = useDisclosure();
   const [reimbursements, setReimbursements] = useState<ReimbursementSummary[]>([]);
+  const [listMeta, setListMeta] = useState<ReimbursementListMeta>({
+    page: 1,
+    pageSize: 10,
+    total: 0,
+    totalPages: 0
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeActionKey, setActiveActionKey] = useState<string | null>(null);
@@ -89,8 +95,9 @@ export function DashboardPage() {
     setError(null);
 
     try {
-      const response = await api.get<ReimbursementSummary[]>("/reimbursements");
-      setReimbursements(response.data);
+      const response = await api.get<ReimbursementListResponse>("/reimbursements");
+      setReimbursements(response.data.data);
+      setListMeta(response.data.meta);
     } catch (caughtError) {
       if (getApiErrorStatus(caughtError) === 401) {
         clearSession();
@@ -281,7 +288,7 @@ export function DashboardPage() {
   return (
     <Stack spacing={6}>
       <PageHeader
-        description={`${reimbursements.length} solicitacao${reimbursements.length === 1 ? "" : "es"} em exibicao`}
+        description={`${listMeta.total} solicitacao${listMeta.total === 1 ? "" : "es"} encontrada${listMeta.total === 1 ? "" : "s"}`}
         title="Dashboard"
         actions={
           <HStack flexWrap="wrap" justify={{ base: "stretch", md: "flex-end" }} w="100%">

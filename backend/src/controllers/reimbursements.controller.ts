@@ -11,6 +11,7 @@ import { prisma } from "../lib/prisma";
 import {
   createAttachmentSchema,
   createReimbursementSchema,
+  listReimbursementsSchema,
   rejectReimbursementSchema,
   reimbursementParamsSchema,
   updateReimbursementSchema
@@ -92,6 +93,21 @@ function getListWhereByRole(user: Express.AuthenticatedUser): Prisma.Reimburseme
   }
 
   return {};
+}
+
+function getListOrderBy(
+  sortBy: "criadoEm" | "dataDespesa" | "valor",
+  sortOrder: "asc" | "desc"
+): Prisma.ReimbursementRequestOrderByWithRelationInput {
+  const fieldBySort = {
+    criadoEm: "createdAt",
+    dataDespesa: "expenseDate",
+    valor: "amount"
+  } satisfies Record<typeof sortBy, keyof Prisma.ReimbursementRequestOrderByWithRelationInput>;
+
+  return {
+    [fieldBySort[sortBy]]: sortOrder
+  };
 }
 
 type ReimbursementAccessData = {
@@ -294,16 +310,67 @@ async function transitionReimbursement(
 
 export const listReimbursements = asyncHandler(async (request, response) => {
   const user = getAuthenticatedUser(request);
-
-  const reimbursements = await prisma.reimbursementRequest.findMany({
-    where: getListWhereByRole(user),
-    orderBy: {
-      createdAt: "desc"
-    },
-    include: reimbursementInclude
+  const {
+    query: { page, pageSize, status, categoriaId, solicitante, sortBy, sortOrder }
+  } = listReimbursementsSchema.parse({
+    query: request.query
   });
 
-  return response.status(200).json(reimbursements.map(serializeReimbursement));
+  const whereFilters: Prisma.ReimbursementRequestWhereInput[] = [getListWhereByRole(user)];
+
+  if (status) {
+    whereFilters.push({ status });
+  }
+
+  if (categoriaId) {
+    whereFilters.push({ categoryId: categoriaId });
+  }
+
+  if (solicitante) {
+    whereFilters.push({
+      requester: {
+        OR: [
+          {
+            name: {
+              contains: solicitante
+            }
+          },
+          {
+            email: {
+              contains: solicitante
+            }
+          }
+        ]
+      }
+    });
+  }
+
+  const where: Prisma.ReimbursementRequestWhereInput = {
+    AND: whereFilters
+  };
+
+  const [total, reimbursements] = await prisma.$transaction([
+    prisma.reimbursementRequest.count({
+      where
+    }),
+    prisma.reimbursementRequest.findMany({
+      where,
+      orderBy: getListOrderBy(sortBy, sortOrder),
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+      include: reimbursementInclude
+    })
+  ]);
+
+  return response.status(200).json({
+    data: reimbursements.map(serializeReimbursement),
+    meta: {
+      page,
+      pageSize,
+      total,
+      totalPages: Math.ceil(total / pageSize)
+    }
+  });
 });
 
 export const createReimbursement = asyncHandler(async (request, response) => {

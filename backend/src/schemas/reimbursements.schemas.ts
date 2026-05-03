@@ -1,3 +1,4 @@
+import { ReimbursementStatus } from "@prisma/client";
 import { z } from "zod";
 
 const reimbursementBodySchema = z.object({
@@ -14,6 +15,18 @@ export const createReimbursementSchema = z.object({
 export const reimbursementParamsSchema = z.object({
   params: z.object({
     id: z.string().min(1)
+  })
+});
+
+export const listReimbursementsSchema = z.object({
+  query: z.object({
+    page: z.coerce.number().int().min(1).default(1),
+    pageSize: z.coerce.number().int().min(1).max(50).default(10),
+    status: z.nativeEnum(ReimbursementStatus).optional(),
+    categoriaId: z.string().trim().min(1).optional(),
+    solicitante: z.string().trim().min(1).optional(),
+    sortBy: z.enum(["criadoEm", "dataDespesa", "valor"]).default("criadoEm"),
+    sortOrder: z.enum(["asc", "desc"]).default("desc")
   })
 });
 
@@ -53,6 +66,7 @@ export const createAttachmentSchema = z.object({
 });
 
 export type CreateReimbursementInput = z.infer<typeof createReimbursementSchema>["body"];
+export type ListReimbursementsInput = z.infer<typeof listReimbursementsSchema>["query"];
 export type UpdateReimbursementInput = z.infer<typeof updateReimbursementSchema>["body"];
 export type RejectReimbursementInput = z.infer<typeof rejectReimbursementSchema>["body"];
 export type CreateAttachmentInput = z.infer<typeof createAttachmentSchema>["body"];

@@ -46,9 +46,23 @@ function makeReimbursement(status: ReimbursementStatus): ReimbursementSummary {
   };
 }
 
+function makeReimbursementListResponse(reimbursements: ReimbursementSummary[]) {
+  return {
+    data: {
+      data: reimbursements,
+      meta: {
+        page: 1,
+        pageSize: 10,
+        total: reimbursements.length,
+        totalPages: reimbursements.length > 0 ? 1 : 0
+      }
+    }
+  };
+}
+
 describe("DashboardPage role actions", () => {
   it("shows collaborator actions for draft reimbursements", async () => {
-    mockedApi.get.mockResolvedValueOnce({ data: [makeReimbursement("RASCUNHO")] });
+    mockedApi.get.mockResolvedValueOnce(makeReimbursementListResponse([makeReimbursement("RASCUNHO")]));
 
     renderWithProviders(<DashboardPage />, {
       route: "/dashboard",
@@ -64,7 +78,7 @@ describe("DashboardPage role actions", () => {
   });
 
   it("shows manager actions for submitted reimbursements", async () => {
-    mockedApi.get.mockResolvedValueOnce({ data: [makeReimbursement("ENVIADO")] });
+    mockedApi.get.mockResolvedValueOnce(makeReimbursementListResponse([makeReimbursement("ENVIADO")]));
 
     renderWithProviders(<DashboardPage />, {
       route: "/dashboard",
@@ -79,7 +93,7 @@ describe("DashboardPage role actions", () => {
   });
 
   it("shows finance actions for approved reimbursements", async () => {
-    mockedApi.get.mockResolvedValueOnce({ data: [makeReimbursement("APROVADO")] });
+    mockedApi.get.mockResolvedValueOnce(makeReimbursementListResponse([makeReimbursement("APROVADO")]));
 
     renderWithProviders(<DashboardPage />, {
       route: "/dashboard",

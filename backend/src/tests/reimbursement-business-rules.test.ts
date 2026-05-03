@@ -94,6 +94,8 @@ async function createDraftRequest(
 
   return response.body as {
     id: string;
+    descricao: string;
+    valor: number;
     solicitanteId: string;
     status: ReimbursementStatus;
     historico: Array<{ acao: string }>;
@@ -201,7 +203,13 @@ describe("reimbursement business rules", () => {
     const response = await request(app).get("/reimbursements").set(auth(tokens.collaborator));
 
     expect(response.status).toBe(200);
-    expect(response.body).toEqual(
+    expect(response.body.meta).toMatchObject({
+      page: 1,
+      pageSize: 10,
+      total: 1,
+      totalPages: 1
+    });
+    expect(response.body.data).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           id: ownRequest.id,
@@ -209,16 +217,127 @@ describe("reimbursement business rules", () => {
         })
       ])
     );
-    expect(response.body).not.toEqual(
+    expect(response.body.data).not.toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           id: otherRequest.id
         })
       ])
     );
-    expect(response.body.every((item: { solicitanteId: string }) => item.solicitanteId === userIds.collaborator)).toBe(
+    expect(response.body.data.every((item: { solicitanteId: string }) => item.solicitanteId === userIds.collaborator)).toBe(
       true
     );
+  });
+
+  it("paginates, filters and sorts reimbursements without changing admin visibility", async () => {
+    await cleanupTestRequests();
+
+    await createDraftRequest(tokens.collaborator, {
+      descricao: "Despesa menor",
+      valor: 50,
+      dataDespesa: "2026-05-03"
+    });
+    const highestRequest = await createDraftRequest(tokens.otherCollaborator, {
+      descricao: "Despesa maior",
+      valor: 300,
+      dataDespesa: "2026-05-02"
+    });
+    const middleRequest = await createDraftRequest(tokens.collaborator, {
+      descricao: "Despesa media",
+      valor: 150,
+      dataDespesa: "2026-05-01"
+    });
+
+    const response = await request(app)
+      .get("/reimbursements")
+      .set(auth(tokens.admin))
+      .query({
+        categoriaId: activeCategoryId,
+        page: 1,
+        pageSize: 2,
+        sortBy: "valor",
+        sortOrder: "desc",
+        status: ReimbursementStatus.RASCUNHO
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body.meta).toEqual({
+      page: 1,
+      pageSize: 2,
+      total: 3,
+      totalPages: 2
+    });
+    expect(response.body.data).toHaveLength(2);
+    expect(response.body.data.map((item: { id: string }) => item.id)).toEqual([
+      highestRequest.id,
+      middleRequest.id
+    ]);
+  });
+
+  it("allows searching by requester name or email inside the current visibility rules", async () => {
+    await cleanupTestRequests();
+
+    const ownRequest = await createDraftRequest(tokens.collaborator, {
+      descricao: "Minha despesa filtravel"
+    });
+    await createDraftRequest(tokens.otherCollaborator, {
+      descricao: "Despesa de outro solicitante"
+    });
+
+    const adminResponse = await request(app)
+      .get("/reimbursements")
+      .set(auth(tokens.admin))
+      .query({
+        solicitante: testUsers.collaborator
+      });
+
+    expect(adminResponse.status).toBe(200);
+    expect(adminResponse.body.data).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: ownRequest.id,
+          solicitanteId: userIds.collaborator
+        })
+      ])
+    );
+    expect(adminResponse.body.data.every((item: { solicitanteId: string }) => item.solicitanteId === userIds.collaborator)).toBe(
+      true
+    );
+
+    const collaboratorResponse = await request(app)
+      .get("/reimbursements")
+      .set(auth(tokens.collaborator))
+      .query({
+        solicitante: testUsers.otherCollaborator
+      });
+
+    expect(collaboratorResponse.status).toBe(200);
+    expect(collaboratorResponse.body).toMatchObject({
+      data: [],
+      meta: {
+        page: 1,
+        pageSize: 10,
+        total: 0,
+        totalPages: 0
+      }
+    });
+  });
+
+  it("returns 400 for invalid list query params", async () => {
+    const response = await request(app)
+      .get("/reimbursements")
+      .set(auth(tokens.admin))
+      .query({
+        pageSize: 51,
+        sortBy: "descricao"
+      });
+
+    expect(response.status).toBe(400);
+    expect(response.body).toMatchObject({
+      message: "Validation error",
+      statusCode: 400,
+      error: "Bad Request"
+    });
   });
 
   it("blocks a collaborator from editing another collaborator's request", async () => {

@@ -26,6 +26,18 @@ export type ReimbursementSummary = {
   };
 };
 
+export type ReimbursementListMeta = {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+};
+
+export type ReimbursementListResponse = {
+  data: ReimbursementSummary[];
+  meta: ReimbursementListMeta;
+};
+
 export type ReimbursementAttachment = {
   id: string;
   nomeArquivo: string;

@@ -278,6 +278,34 @@ Categorias inativas não aparecem como opção para novas solicitações no fron
 | GET | `/reimbursements/:id` | Autenticado com acesso | Exibe detalhe da solicitação |
 | PUT | `/reimbursements/:id` | COLABORADOR dono | Edita solicitação em `RASCUNHO` |
 
+Query params de listagem:
+
+| Parametro | Descrição |
+| --- | --- |
+| `page` | Página atual. Padrão: `1`. |
+| `pageSize` | Itens por página. Padrão: `10`, máximo: `50`. |
+| `status` | Filtra por `RASCUNHO`, `ENVIADO`, `APROVADO`, `REJEITADO`, `PAGO` ou `CANCELADO`. |
+| `categoriaId` | Filtra por categoria. |
+| `solicitante` | Busca por nome ou email do solicitante. |
+| `sortBy` | Ordena por `criadoEm`, `dataDespesa` ou `valor`. |
+| `sortOrder` | Usa `asc` ou `desc`. Padrão: `desc`. |
+
+A resposta de `GET /reimbursements` segue o formato:
+
+```json
+{
+  "data": [],
+  "meta": {
+    "page": 1,
+    "pageSize": 10,
+    "total": 0,
+    "totalPages": 0
+  }
+}
+```
+
+Os filtros são combinados com a regra de visibilidade do perfil. Por exemplo, um colaborador continua vendo apenas suas próprias solicitações.
+
 ```json
 {
   "categoriaId": "id-da-categoria",
@@ -350,7 +378,7 @@ Status usados:
 - RBAC no backend e proteção de rotas no frontend.
 - CRUD de categorias com ativação/inativação.
 - CRUD de solicitações de reembolso.
-- Listagem de solicitações por perfil.
+- Listagem de solicitações por perfil com paginação, filtros e ordenação na API.
 - Transições de status com permissões por perfil.
 - Rejeição com justificativa obrigatória.
 - Histórico de ações da solicitação.
@@ -365,6 +393,7 @@ Status usados:
 
 - Soft delete de categorias por campo `active`.
 - Seeds iniciais de usuários e categorias.
+- Paginação, filtro por status, filtro por categoria, busca por solicitante e ordenação por data/valor em `GET /reimbursements`.
 - Dashboard com totais básicos.
 - Testes adicionais para regras de negócio, histórico, anexos e tratamento de erros.
 
@@ -381,7 +410,6 @@ Status usados:
 ## Fora do escopo intencionalmente
 
 - Upload real para storage externo.
-- Paginação, filtros avançados e ordenação customizada.
 - Recuperação de senha.
 - Refresh token.
 - Docker Compose.
