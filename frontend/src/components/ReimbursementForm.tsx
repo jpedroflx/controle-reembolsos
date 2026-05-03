@@ -108,7 +108,7 @@ export function ReimbursementForm({
   }
 
   return (
-    <Box as="form" onSubmit={handleSubmit}>
+    <Box as="form" noValidate onSubmit={handleSubmit}>
       <Stack bg="white" border="1px solid" borderColor="gray.200" borderRadius="md" p={6} spacing={5}>
         {error ? (
           <Alert status="error">

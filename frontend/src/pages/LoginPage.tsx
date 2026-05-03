@@ -109,7 +109,7 @@ export function LoginPage() {
     <Box minH="100vh" bg="gray.50">
       <Container maxW="md" py={12}>
         <Box bg="white" border="1px solid" borderColor="gray.200" borderRadius="md" p={6}>
-          <Box as="form" onSubmit={handleSubmit}>
+          <Box as="form" noValidate onSubmit={handleSubmit}>
             <Stack spacing={5}>
               <Stack spacing={1}>
                 <Heading size="lg">Login</Heading>
