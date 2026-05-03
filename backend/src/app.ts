@@ -5,6 +5,7 @@ import { env } from "./config/env";
 import { errorHandler } from "./middlewares/error-handler";
 import { notFoundHandler } from "./middlewares/not-found-handler";
 import { authRouter } from "./routes/auth.routes";
+import { categoriesRouter } from "./routes/categories.routes";
 import { healthRouter } from "./routes/health.routes";
 import { usersRouter } from "./routes/users.routes";
 
@@ -18,6 +19,7 @@ app.use(
 app.use(express.json());
 
 app.use("/auth", authRouter);
+app.use("/categories", categoriesRouter);
 app.use("/health", healthRouter);
 app.use("/users", usersRouter);
 

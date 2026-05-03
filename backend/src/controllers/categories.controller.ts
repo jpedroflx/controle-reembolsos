@@ -1,0 +1,91 @@
+import { AppError } from "../errors/app-error";
+import { prisma } from "../lib/prisma";
+import { createCategorySchema, updateCategorySchema } from "../schemas/categories.schemas";
+import { asyncHandler } from "../utils/async-handler";
+
+const categorySelect = {
+  id: true,
+  name: true,
+  active: true,
+  createdAt: true,
+  updatedAt: true
+} as const;
+
+export const listCategories = asyncHandler(async (_request, response) => {
+  const categories = await prisma.category.findMany({
+    orderBy: {
+      name: "asc"
+    },
+    select: categorySelect
+  });
+
+  return response.status(200).json(categories);
+});
+
+export const createCategory = asyncHandler(async (request, response) => {
+  const { name, active } = createCategorySchema.parse({
+    body: request.body
+  }).body;
+
+  const categoryAlreadyExists = await prisma.category.findUnique({
+    where: { name },
+    select: { id: true }
+  });
+
+  if (categoryAlreadyExists) {
+    throw new AppError("Category name is already in use", 400);
+  }
+
+  const category = await prisma.category.create({
+    data: {
+      name,
+      active
+    },
+    select: categorySelect
+  });
+
+  return response.status(201).json(category);
+});
+
+export const updateCategory = asyncHandler(async (request, response) => {
+  const {
+    params: { id },
+    body
+  } = updateCategorySchema.parse({
+    params: request.params,
+    body: request.body
+  });
+
+  const categoryExists = await prisma.category.findUnique({
+    where: { id },
+    select: { id: true }
+  });
+
+  if (!categoryExists) {
+    throw new AppError("Category not found", 404);
+  }
+
+  if (body.name) {
+    const categoryWithSameName = await prisma.category.findFirst({
+      where: {
+        name: body.name,
+        NOT: {
+          id
+        }
+      },
+      select: { id: true }
+    });
+
+    if (categoryWithSameName) {
+      throw new AppError("Category name is already in use", 400);
+    }
+  }
+
+  const category = await prisma.category.update({
+    where: { id },
+    data: body,
+    select: categorySelect
+  });
+
+  return response.status(200).json(category);
+});
