@@ -1,17 +1,17 @@
 import { createContext, type PropsWithChildren, useContext, useEffect, useMemo, useState } from "react";
 
-import { api } from "../api/http";
+import { setAuthToken } from "../api/http";
 
-type UserProfile = "COLABORADOR" | "GESTOR" | "FINANCEIRO" | "ADMIN";
+export type UserRole = "COLABORADOR" | "GESTOR" | "FINANCEIRO" | "ADMIN";
 
-type AuthUser = {
+export type AuthUser = {
   id: string;
-  nome: string;
+  name: string;
   email: string;
-  perfil: UserProfile;
+  role: UserRole;
 };
 
-type AuthSession = {
+export type AuthSession = {
   token: string;
   user: AuthUser;
 };
@@ -22,11 +22,58 @@ type AuthContextValue = {
   setSession: (session: AuthSession) => void;
   token: string | null;
   user: AuthUser | null;
+  userRole: UserRole | null;
 };
 
 const STORAGE_KEY = "controle-reembolsos:session";
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+
+function isUserRole(value: unknown): value is UserRole {
+  return value === "COLABORADOR" || value === "GESTOR" || value === "FINANCEIRO" || value === "ADMIN";
+}
+
+function normalizeSession(value: unknown): AuthSession | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const session = value as {
+    token?: unknown;
+    user?: {
+      id?: unknown;
+      name?: unknown;
+      nome?: unknown;
+      email?: unknown;
+      role?: unknown;
+      perfil?: unknown;
+    };
+  };
+
+  const userRole = session.user?.role ?? session.user?.perfil;
+  const userName = session.user?.name ?? session.user?.nome;
+
+  if (
+    typeof session.token !== "string" ||
+    !session.user ||
+    typeof session.user.id !== "string" ||
+    typeof userName !== "string" ||
+    typeof session.user.email !== "string" ||
+    !isUserRole(userRole)
+  ) {
+    return null;
+  }
+
+  return {
+    token: session.token,
+    user: {
+      id: session.user.id,
+      name: userName,
+      email: session.user.email,
+      role: userRole
+    }
+  };
+}
 
 function readStoredSession(): AuthSession | null {
   const rawSession = window.localStorage.getItem(STORAGE_KEY);
@@ -36,7 +83,13 @@ function readStoredSession(): AuthSession | null {
   }
 
   try {
-    return JSON.parse(rawSession) as AuthSession;
+    const session = normalizeSession(JSON.parse(rawSession));
+
+    if (!session) {
+      window.localStorage.removeItem(STORAGE_KEY);
+    }
+
+    return session;
   } catch {
     window.localStorage.removeItem(STORAGE_KEY);
     return null;
@@ -47,12 +100,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [session, setStoredSession] = useState<AuthSession | null>(() => readStoredSession());
 
   useEffect(() => {
-    if (session?.token) {
-      api.defaults.headers.common.Authorization = `Bearer ${session.token}`;
-      return;
-    }
-
-    delete api.defaults.headers.common.Authorization;
+    setAuthToken(session?.token ?? null);
   }, [session]);
 
   const value = useMemo<AuthContextValue>(
@@ -67,7 +115,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
         setStoredSession(nextSession);
       },
       token: session?.token ?? null,
-      user: session?.user ?? null
+      user: session?.user ?? null,
+      userRole: session?.user.role ?? null
     }),
     [session]
   );
