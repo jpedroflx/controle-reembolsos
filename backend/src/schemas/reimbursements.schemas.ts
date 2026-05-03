@@ -26,5 +26,15 @@ export const updateReimbursementSchema = z.object({
   })
 });
 
+export const rejectReimbursementSchema = z.object({
+  params: z.object({
+    id: z.string().min(1)
+  }),
+  body: z.object({
+    justificativaRejeicao: z.string().trim().min(1)
+  })
+});
+
 export type CreateReimbursementInput = z.infer<typeof createReimbursementSchema>["body"];
 export type UpdateReimbursementInput = z.infer<typeof updateReimbursementSchema>["body"];
+export type RejectReimbursementInput = z.infer<typeof rejectReimbursementSchema>["body"];

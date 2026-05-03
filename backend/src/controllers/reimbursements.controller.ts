@@ -11,6 +11,7 @@ import { AppError } from "../errors/app-error";
 import { prisma } from "../lib/prisma";
 import {
   createReimbursementSchema,
+  rejectReimbursementSchema,
   reimbursementParamsSchema,
   updateReimbursementSchema
 } from "../schemas/reimbursements.schemas";
@@ -172,6 +173,75 @@ async function ensureActiveCategory(categoryId: string) {
   }
 }
 
+type TransitionOptions = {
+  action: HistoryAction;
+  expectedStatus: ReimbursementStatus;
+  nextStatus: ReimbursementStatus;
+  note: string;
+  rejectionReason?: string | null;
+  requireOwner?: boolean;
+};
+
+async function transitionReimbursement(
+  request: Request,
+  reimbursementId: string,
+  {
+    action,
+    expectedStatus,
+    nextStatus,
+    note,
+    rejectionReason,
+    requireOwner = false
+  }: TransitionOptions
+) {
+  const user = getAuthenticatedUser(request);
+
+  const reimbursement = await prisma.reimbursementRequest.findUnique({
+    where: { id: reimbursementId },
+    select: {
+      id: true,
+      requesterId: true,
+      status: true
+    }
+  });
+
+  if (!reimbursement) {
+    throw new AppError("Reimbursement request not found", 404);
+  }
+
+  if (requireOwner && reimbursement.requesterId !== user.id) {
+    throw new AppError("User does not have permission to access this resource", 403);
+  }
+
+  if (reimbursement.status !== expectedStatus) {
+    throw new AppError("Invalid reimbursement status transition", 400);
+  }
+
+  return prisma.$transaction(async (transaction) => {
+    await transaction.reimbursementRequest.update({
+      where: { id: reimbursementId },
+      data: {
+        status: nextStatus,
+        rejectionReason
+      }
+    });
+
+    await transaction.reimbursementHistory.create({
+      data: {
+        requestId: reimbursementId,
+        userId: user.id,
+        action,
+        note
+      }
+    });
+
+    return transaction.reimbursementRequest.findUniqueOrThrow({
+      where: { id: reimbursementId },
+      include: reimbursementInclude
+    });
+  });
+}
+
 export const listReimbursements = asyncHandler(async (request, response) => {
   const user = getAuthenticatedUser(request);
 
@@ -302,4 +372,95 @@ export const updateReimbursement = asyncHandler(async (request, response) => {
   });
 
   return response.status(200).json(serializeReimbursement(updatedReimbursement));
+});
+
+export const submitReimbursement = asyncHandler(async (request, response) => {
+  const {
+    params: { id }
+  } = reimbursementParamsSchema.parse({
+    params: request.params
+  });
+
+  const reimbursement = await transitionReimbursement(request, id, {
+    action: HistoryAction.SUBMITTED,
+    expectedStatus: ReimbursementStatus.RASCUNHO,
+    nextStatus: ReimbursementStatus.ENVIADO,
+    note: "Solicitacao enviada para analise",
+    requireOwner: true
+  });
+
+  return response.status(200).json(serializeReimbursement(reimbursement));
+});
+
+export const approveReimbursement = asyncHandler(async (request, response) => {
+  const {
+    params: { id }
+  } = reimbursementParamsSchema.parse({
+    params: request.params
+  });
+
+  const reimbursement = await transitionReimbursement(request, id, {
+    action: HistoryAction.APPROVED,
+    expectedStatus: ReimbursementStatus.ENVIADO,
+    nextStatus: ReimbursementStatus.APROVADO,
+    note: "Solicitacao aprovada pelo gestor",
+    rejectionReason: null
+  });
+
+  return response.status(200).json(serializeReimbursement(reimbursement));
+});
+
+export const rejectReimbursement = asyncHandler(async (request, response) => {
+  const {
+    params: { id },
+    body: { justificativaRejeicao }
+  } = rejectReimbursementSchema.parse({
+    params: request.params,
+    body: request.body
+  });
+
+  const reimbursement = await transitionReimbursement(request, id, {
+    action: HistoryAction.REJECTED,
+    expectedStatus: ReimbursementStatus.ENVIADO,
+    nextStatus: ReimbursementStatus.REJEITADO,
+    note: justificativaRejeicao,
+    rejectionReason: justificativaRejeicao
+  });
+
+  return response.status(200).json(serializeReimbursement(reimbursement));
+});
+
+export const payReimbursement = asyncHandler(async (request, response) => {
+  const {
+    params: { id }
+  } = reimbursementParamsSchema.parse({
+    params: request.params
+  });
+
+  const reimbursement = await transitionReimbursement(request, id, {
+    action: HistoryAction.PAID,
+    expectedStatus: ReimbursementStatus.APROVADO,
+    nextStatus: ReimbursementStatus.PAGO,
+    note: "Pagamento realizado pelo financeiro"
+  });
+
+  return response.status(200).json(serializeReimbursement(reimbursement));
+});
+
+export const cancelReimbursement = asyncHandler(async (request, response) => {
+  const {
+    params: { id }
+  } = reimbursementParamsSchema.parse({
+    params: request.params
+  });
+
+  const reimbursement = await transitionReimbursement(request, id, {
+    action: HistoryAction.CANCELED,
+    expectedStatus: ReimbursementStatus.RASCUNHO,
+    nextStatus: ReimbursementStatus.CANCELADO,
+    note: "Solicitacao cancelada pelo colaborador",
+    requireOwner: true
+  });
+
+  return response.status(200).json(serializeReimbursement(reimbursement));
 });
