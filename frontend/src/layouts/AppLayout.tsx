@@ -10,17 +10,26 @@ import {
 } from "@chakra-ui/react";
 import { Link as RouterLink, Outlet, useNavigate } from "react-router-dom";
 
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth, type UserRole } from "../contexts/AuthContext";
 
-const navigationItems = [
+type NavigationItem = {
+  allowedRoles?: UserRole[];
+  label: string;
+  to: string;
+};
+
+const navigationItems: NavigationItem[] = [
   { label: "Dashboard", to: "/dashboard" },
-  { label: "Nova solicitação", to: "/reimbursements/new" },
-  { label: "Categorias", to: "/categories" }
+  { allowedRoles: ["COLABORADOR"], label: "Nova solicitacao", to: "/reimbursements/new" },
+  { allowedRoles: ["ADMIN"], label: "Categorias", to: "/categories" }
 ];
 
 export function AppLayout() {
   const { clearSession, user, userRole } = useAuth();
   const navigate = useNavigate();
+  const visibleNavigationItems = navigationItems.filter(
+    (item) => !item.allowedRoles || (userRole && item.allowedRoles.includes(userRole))
+  );
 
   function handleLogout() {
     clearSession();
@@ -37,12 +46,12 @@ export function AppLayout() {
                 Controle de Reembolsos
               </Text>
               <Text color="gray.500" fontSize="sm">
-                {user ? `${user.name} (${userRole})` : "Usuário autenticado"}
+                {user ? `${user.name} (${userRole})` : "Usuario autenticado"}
               </Text>
             </Stack>
 
             <HStack as="nav" display={{ base: "none", md: "flex" }} spacing={4}>
-              {navigationItems.map((item) => (
+              {visibleNavigationItems.map((item) => (
                 <ChakraLink as={RouterLink} color="gray.700" fontWeight="medium" key={item.to} to={item.to}>
                   {item.label}
                 </ChakraLink>
