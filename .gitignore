@@ -1,0 +1,22 @@
+node_modules/
+dist/
+coverage/
+.env
+.env.local
+.env.*.local
+*.log
+*.tsbuildinfo
+.logs/
+
+# Prisma / SQLite
+backend/prisma/*.db
+backend/prisma/*.db-journal
+
+# Vite
+frontend/.vite/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
