@@ -1,6 +1,7 @@
 import {
   Alert,
   AlertIcon,
+  Badge,
   Box,
   Button,
   Container,
@@ -10,7 +11,6 @@ import {
   Heading,
   Input,
   Link as ChakraLink,
-  Select,
   Stack,
   Text
 } from "@chakra-ui/react";
@@ -18,23 +18,15 @@ import { FormEvent, useState } from "react";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
 
 import { api } from "../api/http";
-import { UserRole } from "../contexts/AuthContext";
 import { getApiErrorMessage, getApiErrorStatus } from "../utils/apiErrors";
 
 type RegisterFieldErrors = {
   name?: string;
   email?: string;
   password?: string;
-  role?: string;
 };
 
-const allowedRoles: UserRole[] = ["COLABORADOR", "GESTOR", "FINANCEIRO", "ADMIN"];
-
-function isUserRole(value: string): value is UserRole {
-  return allowedRoles.includes(value as UserRole);
-}
-
-function validateRegisterForm(name: string, email: string, password: string, role: string) {
+function validateRegisterForm(name: string, email: string, password: string) {
   const nextErrors: RegisterFieldErrors = {};
   const normalizedName = name.trim();
   const normalizedEmail = email.trim();
@@ -55,12 +47,6 @@ function validateRegisterForm(name: string, email: string, password: string, rol
     nextErrors.password = "A senha deve ter pelo menos 6 caracteres.";
   }
 
-  if (!role) {
-    nextErrors.role = "Selecione um perfil.";
-  } else if (!isUserRole(role)) {
-    nextErrors.role = "Selecione um perfil valido.";
-  }
-
   return nextErrors;
 }
 
@@ -69,7 +55,6 @@ export function RegisterPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<UserRole>("COLABORADOR");
   const [fieldErrors, setFieldErrors] = useState<RegisterFieldErrors>({});
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -78,7 +63,7 @@ export function RegisterPage() {
     event.preventDefault();
     setError(null);
 
-    const nextErrors = validateRegisterForm(name, email, password, role);
+    const nextErrors = validateRegisterForm(name, email, password);
     setFieldErrors(nextErrors);
 
     if (Object.keys(nextErrors).length > 0) {
@@ -91,8 +76,7 @@ export function RegisterPage() {
       await api.post("/users", {
         name: name.trim(),
         email: email.trim(),
-        password,
-        role
+        password
       });
       navigate("/login", {
         replace: true,
@@ -117,7 +101,7 @@ export function RegisterPage() {
       <Container maxW="md" py={{ base: 8, md: 14 }}>
         <Stack mb={6} spacing={1} textAlign="center">
           <Heading size="lg">Controle de Reembolsos</Heading>
-          <Text color="gray.600">Crie um usuario para testar os perfis</Text>
+          <Text color="gray.600">Crie um usuario colaborador</Text>
         </Stack>
 
         <Box bg="white" border="1px solid" borderColor="gray.200" borderRadius="md" boxShadow="sm" p={{ base: 5, md: 6 }}>
@@ -170,17 +154,14 @@ export function RegisterPage() {
                 <FormErrorMessage>{fieldErrors.password}</FormErrorMessage>
               </FormControl>
 
-              <FormControl isInvalid={Boolean(fieldErrors.role)} isRequired>
-                <FormLabel>Perfil</FormLabel>
-                <Select focusBorderColor="red.500" value={role} onChange={(event) => setRole(event.target.value as UserRole)}>
-                  {allowedRoles.map((allowedRole) => (
-                    <option key={allowedRole} value={allowedRole}>
-                      {allowedRole}
-                    </option>
-                  ))}
-                </Select>
-                <FormErrorMessage>{fieldErrors.role}</FormErrorMessage>
-              </FormControl>
+              <Box>
+                <Text color="gray.500" fontSize="sm" mb={2}>
+                  Perfil criado
+                </Text>
+                <Badge colorScheme="green" px={2} py={1} rounded="full">
+                  COLABORADOR
+                </Badge>
+              </Box>
 
               <Button isLoading={isLoading} type="submit">
                 Criar usuario

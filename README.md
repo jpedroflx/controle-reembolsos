@@ -209,6 +209,8 @@ Senha@123
 | FINANCEIRO | financeiro@teste.com | Senha@123 |
 | ADMIN | admin@teste.com | Senha@123 |
 
+O cadastro publico da aplicacao cria apenas usuarios `COLABORADOR`. Os perfis `GESTOR`, `FINANCEIRO` e `ADMIN` ficam disponiveis pelos dados do seed.
+
 ## Fluxo manual sugerido para avaliacao
 
 1. Entrar como `colaborador@teste.com`.
@@ -296,7 +298,7 @@ Body:
 
 | Metodo | Rota | Perfil | Descricao |
 | --- | --- | --- | --- |
-| POST | `/users` | Publico | Cria usuario com senha hasheada |
+| POST | `/users` | Publico | Cria usuario `COLABORADOR` com senha hasheada |
 | GET | `/users` | ADMIN | Lista usuarios sem senha |
 
 Body de criacao:
@@ -305,10 +307,11 @@ Body de criacao:
 {
   "name": "Novo Usuario",
   "email": "novo@teste.com",
-  "password": "Senha@123",
-  "role": "COLABORADOR"
+  "password": "Senha@123"
 }
 ```
+
+A API ignora qualquer tentativa de definir perfil privilegiado no cadastro publico e sempre cria o usuario como `COLABORADOR`.
 
 ### Categorias
 
@@ -415,7 +418,7 @@ Status usados:
 
 - Login com JWT.
 - Persistencia de sessao no frontend com Context API e localStorage.
-- Criacao e listagem de usuarios.
+- Cadastro publico de usuarios colaboradores e listagem de usuarios para ADMIN.
 - RBAC no backend e protecao de rotas no frontend.
 - CRUD de categorias sem delete fisico.
 - Ativacao e inativacao de categorias.
@@ -449,6 +452,7 @@ Status usados:
 - Zod usado para validar entrada da API.
 - JWT usado para autenticacao stateless.
 - bcrypt usado para hash de senhas.
+- Cadastro publico limitado a `COLABORADOR`; perfis privilegiados sao criados apenas pelo seed.
 - Frontend com Context API para manter usuario, token e perfil.
 - Axios centralizado para enviar `Authorization: Bearer <token>`.
 - Frontend esconde acoes conforme perfil/status, mas a API continua sendo a autoridade das regras.

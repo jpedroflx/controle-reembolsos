@@ -1,3 +1,4 @@
+import { Role } from "@prisma/client";
 import bcrypt from "bcrypt";
 
 import { AppError } from "../errors/app-error";
@@ -15,7 +16,7 @@ const publicUserSelect = {
 } as const;
 
 export const createUser = asyncHandler(async (request, response) => {
-  const { name, email, password, role } = createUserSchema.parse({
+  const { name, email, password } = createUserSchema.parse({
     body: request.body
   }).body;
 
@@ -35,7 +36,7 @@ export const createUser = asyncHandler(async (request, response) => {
       name,
       email,
       passwordHash,
-      role
+      role: Role.COLABORADOR
     },
     select: publicUserSelect
   });

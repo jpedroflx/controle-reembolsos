@@ -101,8 +101,7 @@ describe("auth and user routes", () => {
     const response = await request(app).post("/users").send({
       name: "Usuario Email Invalido",
       email: "email-invalido",
-      password: testPassword,
-      role: Role.COLABORADOR
+      password: testPassword
     });
 
     expect(response.status).toBe(400);
@@ -111,5 +110,31 @@ describe("auth and user routes", () => {
       statusCode: 400,
       error: "Bad Request"
     });
+  });
+
+  it("creates public users only as collaborators even when a privileged role is sent", async () => {
+    const email = `auth.public-admin-attempt.${Date.now()}@teste.com`;
+
+    const response = await request(app).post("/users").send({
+      name: "Usuario Publico",
+      email,
+      password: testPassword,
+      role: Role.ADMIN
+    });
+
+    expect(response.status).toBe(201);
+    expect(response.body).toMatchObject({
+      email,
+      role: Role.COLABORADOR
+    });
+    expect(response.body).not.toHaveProperty("password");
+    expect(response.body).not.toHaveProperty("passwordHash");
+
+    const createdUser = await prisma.user.findUniqueOrThrow({
+      where: { email },
+      select: { role: true }
+    });
+
+    expect(createdUser.role).toBe(Role.COLABORADOR);
   });
 });
