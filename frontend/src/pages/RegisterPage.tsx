@@ -5,6 +5,7 @@ import {
   Button,
   Container,
   FormControl,
+  FormErrorMessage,
   FormLabel,
   Heading,
   Input,
@@ -18,31 +19,94 @@ import { Link as RouterLink, useNavigate } from "react-router-dom";
 
 import { api } from "../api/http";
 import { UserRole } from "../contexts/AuthContext";
+import { getApiErrorMessage, getApiErrorStatus } from "../utils/apiErrors";
+
+type RegisterFieldErrors = {
+  name?: string;
+  email?: string;
+  password?: string;
+  role?: string;
+};
+
+const allowedRoles: UserRole[] = ["COLABORADOR", "GESTOR", "FINANCEIRO", "ADMIN"];
+
+function isUserRole(value: string): value is UserRole {
+  return allowedRoles.includes(value as UserRole);
+}
+
+function validateRegisterForm(name: string, email: string, password: string, role: string) {
+  const nextErrors: RegisterFieldErrors = {};
+  const normalizedName = name.trim();
+  const normalizedEmail = email.trim();
+
+  if (!normalizedName) {
+    nextErrors.name = "Informe o nome.";
+  }
+
+  if (!normalizedEmail) {
+    nextErrors.email = "Informe o email.";
+  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+    nextErrors.email = "Informe um email valido.";
+  }
+
+  if (!password) {
+    nextErrors.password = "Informe a senha.";
+  } else if (password.length < 6) {
+    nextErrors.password = "A senha deve ter pelo menos 6 caracteres.";
+  }
+
+  if (!role) {
+    nextErrors.role = "Selecione um perfil.";
+  } else if (!isUserRole(role)) {
+    nextErrors.role = "Selecione um perfil valido.";
+  }
+
+  return nextErrors;
+}
 
 export function RegisterPage() {
   const navigate = useNavigate();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("Senha@123");
+  const [password, setPassword] = useState("");
   const [role, setRole] = useState<UserRole>("COLABORADOR");
+  const [fieldErrors, setFieldErrors] = useState<RegisterFieldErrors>({});
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
+
+    const nextErrors = validateRegisterForm(name, email, password, role);
+    setFieldErrors(nextErrors);
+
+    if (Object.keys(nextErrors).length > 0) {
+      return;
+    }
+
     setIsLoading(true);
 
     try {
       await api.post("/users", {
-        name,
-        email,
+        name: name.trim(),
+        email: email.trim(),
         password,
         role
       });
-      navigate("/login", { replace: true });
-    } catch {
-      setError("Não foi possível criar o usuário.");
+      navigate("/login", {
+        replace: true,
+        state: { message: "Cadastro realizado. Faca login para continuar." }
+      });
+    } catch (caughtError) {
+      const status = getApiErrorStatus(caughtError);
+
+      if (status === 400) {
+        setError(getApiErrorMessage(caughtError, "Confira os dados informados."));
+        return;
+      }
+
+      setError(getApiErrorMessage(caughtError, "Nao foi possivel criar o usuario agora. Tente novamente."));
     } finally {
       setIsLoading(false);
     }
@@ -56,7 +120,7 @@ export function RegisterPage() {
             <Stack spacing={5}>
               <Stack spacing={1}>
                 <Heading size="lg">Cadastro</Heading>
-                <Text color="gray.600">Crie um usuário para testar os fluxos por perfil.</Text>
+                <Text color="gray.600">Crie seu acesso.</Text>
               </Stack>
 
               {error ? (
@@ -66,37 +130,52 @@ export function RegisterPage() {
                 </Alert>
               ) : null}
 
-              <FormControl isRequired>
+              <FormControl isInvalid={Boolean(fieldErrors.name)} isRequired>
                 <FormLabel>Nome</FormLabel>
-                <Input value={name} onChange={(event) => setName(event.target.value)} />
+                <Input autoComplete="name" value={name} onChange={(event) => setName(event.target.value)} />
+                <FormErrorMessage>{fieldErrors.name}</FormErrorMessage>
               </FormControl>
 
-              <FormControl isRequired>
+              <FormControl isInvalid={Boolean(fieldErrors.email)} isRequired>
                 <FormLabel>Email</FormLabel>
-                <Input value={email} onChange={(event) => setEmail(event.target.value)} />
+                <Input
+                  autoComplete="email"
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                />
+                <FormErrorMessage>{fieldErrors.email}</FormErrorMessage>
               </FormControl>
 
-              <FormControl isRequired>
+              <FormControl isInvalid={Boolean(fieldErrors.password)} isRequired>
                 <FormLabel>Senha</FormLabel>
-                <Input type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
+                <Input
+                  autoComplete="new-password"
+                  type="password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                />
+                <FormErrorMessage>{fieldErrors.password}</FormErrorMessage>
               </FormControl>
 
-              <FormControl isRequired>
+              <FormControl isInvalid={Boolean(fieldErrors.role)} isRequired>
                 <FormLabel>Perfil</FormLabel>
                 <Select value={role} onChange={(event) => setRole(event.target.value as UserRole)}>
-                  <option value="COLABORADOR">COLABORADOR</option>
-                  <option value="GESTOR">GESTOR</option>
-                  <option value="FINANCEIRO">FINANCEIRO</option>
-                  <option value="ADMIN">ADMIN</option>
+                  {allowedRoles.map((allowedRole) => (
+                    <option key={allowedRole} value={allowedRole}>
+                      {allowedRole}
+                    </option>
+                  ))}
                 </Select>
+                <FormErrorMessage>{fieldErrors.role}</FormErrorMessage>
               </FormControl>
 
               <Button colorScheme="red" isLoading={isLoading} type="submit">
-                Criar usuário
+                Criar usuario
               </Button>
 
               <Text color="gray.600" fontSize="sm">
-                Já tem conta?{" "}
+                Ja tem conta?{" "}
                 <ChakraLink as={RouterLink} color="red.600" fontWeight="semibold" to="/login">
                   Entrar
                 </ChakraLink>
