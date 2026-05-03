@@ -1,4 +1,5 @@
 import {
+  Badge,
   Box,
   Button,
   Container,
@@ -38,34 +39,55 @@ export function AppLayout() {
 
   return (
     <Box minH="100vh" bg="gray.50">
-      <Box bg="white" borderBottom="1px solid" borderColor="gray.200">
-        <Container maxW="6xl" py={4}>
-          <Flex align="center" gap={4} justify="space-between">
+      <Box bg="white" borderBottom="1px solid" borderColor="gray.200" position="sticky" top={0} zIndex="sticky">
+        <Container maxW="7xl" py={4}>
+          <Flex align={{ base: "stretch", md: "center" }} direction={{ base: "column", md: "row" }} gap={4} justify="space-between">
             <Stack spacing={0}>
               <Text color="gray.900" fontSize="lg" fontWeight="bold">
                 Controle de Reembolsos
               </Text>
-              <Text color="gray.500" fontSize="sm">
-                {user ? `${user.name} (${userRole})` : "Usuario autenticado"}
-              </Text>
+              <HStack color="gray.500" fontSize="sm" spacing={2}>
+                <Text>{user ? user.name : "Usuario autenticado"}</Text>
+                {userRole ? (
+                  <Badge colorScheme="red" rounded="full">
+                    {userRole}
+                  </Badge>
+                ) : null}
+              </HStack>
             </Stack>
 
-            <HStack as="nav" display={{ base: "none", md: "flex" }} spacing={4}>
+            <HStack
+              as="nav"
+              bg={{ base: "gray.50", md: "transparent" }}
+              borderRadius="md"
+              overflowX="auto"
+              px={{ base: 3, md: 0 }}
+              py={{ base: 2, md: 0 }}
+              spacing={4}
+              whiteSpace="nowrap"
+            >
               {visibleNavigationItems.map((item) => (
-                <ChakraLink as={RouterLink} color="gray.700" fontWeight="medium" key={item.to} to={item.to}>
+                <ChakraLink
+                  as={RouterLink}
+                  color="gray.700"
+                  fontSize="sm"
+                  fontWeight="semibold"
+                  key={item.to}
+                  to={item.to}
+                >
                   {item.label}
                 </ChakraLink>
               ))}
             </HStack>
 
-            <Button colorScheme="red" variant="outline" onClick={handleLogout}>
+            <Button alignSelf={{ base: "flex-start", md: "center" }} size="sm" variant="outline" onClick={handleLogout}>
               Sair
             </Button>
           </Flex>
         </Container>
       </Box>
 
-      <Container maxW="6xl" py={8}>
+      <Container maxW="7xl" py={{ base: 5, md: 8 }}>
         <Outlet />
       </Container>
     </Box>

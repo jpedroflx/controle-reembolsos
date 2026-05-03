@@ -9,6 +9,7 @@ import {
   FormLabel,
   Input,
   Select,
+  SimpleGrid,
   Stack,
   Textarea
 } from "@chakra-ui/react";
@@ -109,7 +110,7 @@ export function ReimbursementForm({
 
   return (
     <Box as="form" noValidate onSubmit={handleSubmit}>
-      <Stack bg="white" border="1px solid" borderColor="gray.200" borderRadius="md" p={6} spacing={5}>
+      <Stack bg="white" border="1px solid" borderColor="gray.200" borderRadius="md" p={{ base: 5, md: 6 }} spacing={5}>
         {error ? (
           <Alert status="error">
             <AlertIcon />
@@ -120,6 +121,7 @@ export function ReimbursementForm({
         <FormControl isInvalid={Boolean(errors.descricao)} isRequired>
           <FormLabel>Descricao</FormLabel>
           <Textarea
+            focusBorderColor="red.500"
             minH="120px"
             value={values.descricao}
             onChange={(event) => setValues((current) => ({ ...current, descricao: event.target.value }))}
@@ -127,45 +129,50 @@ export function ReimbursementForm({
           <FormErrorMessage>{errors.descricao}</FormErrorMessage>
         </FormControl>
 
-        <FormControl isInvalid={Boolean(errors.categoriaId)} isRequired>
-          <FormLabel>Categoria</FormLabel>
-          <Select
-            placeholder="Selecione uma categoria"
-            value={values.categoriaId}
-            onChange={(event) => setValues((current) => ({ ...current, categoriaId: event.target.value }))}
-          >
-            {categories.map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
-            ))}
-          </Select>
-          <FormErrorMessage>{errors.categoriaId}</FormErrorMessage>
-        </FormControl>
+        <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4}>
+          <FormControl isInvalid={Boolean(errors.categoriaId)} isRequired>
+            <FormLabel>Categoria</FormLabel>
+            <Select
+              focusBorderColor="red.500"
+              placeholder="Selecione uma categoria"
+              value={values.categoriaId}
+              onChange={(event) => setValues((current) => ({ ...current, categoriaId: event.target.value }))}
+            >
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </Select>
+            <FormErrorMessage>{errors.categoriaId}</FormErrorMessage>
+          </FormControl>
 
-        <FormControl isInvalid={Boolean(errors.valor)} isRequired>
-          <FormLabel>Valor</FormLabel>
-          <Input
-            min="0.01"
-            step="0.01"
-            type="number"
-            value={values.valor}
-            onChange={(event) => setValues((current) => ({ ...current, valor: event.target.value }))}
-          />
-          <FormErrorMessage>{errors.valor}</FormErrorMessage>
-        </FormControl>
+          <FormControl isInvalid={Boolean(errors.valor)} isRequired>
+            <FormLabel>Valor</FormLabel>
+            <Input
+              focusBorderColor="red.500"
+              min="0.01"
+              step="0.01"
+              type="number"
+              value={values.valor}
+              onChange={(event) => setValues((current) => ({ ...current, valor: event.target.value }))}
+            />
+            <FormErrorMessage>{errors.valor}</FormErrorMessage>
+          </FormControl>
 
-        <FormControl isInvalid={Boolean(errors.dataDespesa)} isRequired>
-          <FormLabel>Data da despesa</FormLabel>
-          <Input
-            type="date"
-            value={values.dataDespesa}
-            onChange={(event) => setValues((current) => ({ ...current, dataDespesa: event.target.value }))}
-          />
-          <FormErrorMessage>{errors.dataDespesa}</FormErrorMessage>
-        </FormControl>
+          <FormControl isInvalid={Boolean(errors.dataDespesa)} isRequired>
+            <FormLabel>Data da despesa</FormLabel>
+            <Input
+              focusBorderColor="red.500"
+              type="date"
+              value={values.dataDespesa}
+              onChange={(event) => setValues((current) => ({ ...current, dataDespesa: event.target.value }))}
+            />
+            <FormErrorMessage>{errors.dataDespesa}</FormErrorMessage>
+          </FormControl>
+        </SimpleGrid>
 
-        <ButtonGroup justifyContent="flex-end">
+        <ButtonGroup flexDirection={{ base: "column-reverse", sm: "row" }} gap={2} justifyContent="flex-end" spacing={0}>
           <Button variant="outline" onClick={onCancel}>
             Cancelar
           </Button>

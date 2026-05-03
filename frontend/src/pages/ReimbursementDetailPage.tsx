@@ -44,12 +44,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link as RouterLink, useNavigate, useParams } from "react-router-dom";
 
 import { api } from "../api/http";
+import { EmptyState } from "../components/EmptyState";
+import { PageHeader } from "../components/PageHeader";
+import { StatusBadge } from "../components/StatusBadge";
 import { useAuth } from "../contexts/AuthContext";
 import type {
   ReimbursementAttachment,
   ReimbursementDetail,
-  ReimbursementHistoryAction,
-  ReimbursementStatus
+  ReimbursementHistoryAction
 } from "../types/reimbursements";
 import { getApiErrorMessage, getApiErrorStatus } from "../utils/apiErrors";
 
@@ -62,24 +64,6 @@ type AttachmentFormValues = {
 };
 
 type AttachmentFormErrors = Partial<Record<keyof AttachmentFormValues, string>>;
-
-const statusLabels: Record<ReimbursementStatus, string> = {
-  RASCUNHO: "Rascunho",
-  ENVIADO: "Enviado",
-  APROVADO: "Aprovado",
-  REJEITADO: "Rejeitado",
-  PAGO: "Pago",
-  CANCELADO: "Cancelado"
-};
-
-const statusColors: Record<ReimbursementStatus, string> = {
-  RASCUNHO: "gray",
-  ENVIADO: "blue",
-  APROVADO: "green",
-  REJEITADO: "red",
-  PAGO: "purple",
-  CANCELADO: "orange"
-};
 
 const historyLabels: Record<ReimbursementHistoryAction, string> = {
   CREATED: "Criada",
@@ -394,13 +378,7 @@ export function ReimbursementDetailPage() {
 
   return (
     <Stack spacing={6}>
-      <Flex align={{ base: "flex-start", md: "center" }} gap={4} justify="space-between">
-        <Stack spacing={1}>
-          <Heading size="lg">Detalhe da solicitacao</Heading>
-          <Text color="gray.600">{id}</Text>
-        </Stack>
-        {renderActionButtons()}
-      </Flex>
+      <PageHeader description={id} title="Detalhe da solicitacao" actions={renderActionButtons()} />
 
       {isLoading ? (
         <Stack>
@@ -426,29 +404,27 @@ export function ReimbursementDetailPage() {
         <>
           <Grid gap={4} templateColumns={{ base: "1fr", md: "repeat(4, 1fr)" }}>
             <GridItem>
-              <Stat bg="white" border="1px solid" borderColor="gray.200" borderRadius="md" p={4}>
+              <Stat bg="white" border="1px solid" borderColor="gray.200" borderRadius="md" boxShadow="sm" p={4}>
                 <StatLabel>Status</StatLabel>
                 <StatNumber>
-                  <Badge colorScheme={statusColors[reimbursement.status]} fontSize="md">
-                    {statusLabels[reimbursement.status]}
-                  </Badge>
+                  <StatusBadge status={reimbursement.status} />
                 </StatNumber>
               </Stat>
             </GridItem>
             <GridItem>
-              <Stat bg="white" border="1px solid" borderColor="gray.200" borderRadius="md" p={4}>
+              <Stat bg="white" border="1px solid" borderColor="gray.200" borderRadius="md" boxShadow="sm" p={4}>
                 <StatLabel>Valor</StatLabel>
                 <StatNumber>{formatCurrency(reimbursement.valor)}</StatNumber>
               </Stat>
             </GridItem>
             <GridItem>
-              <Stat bg="white" border="1px solid" borderColor="gray.200" borderRadius="md" p={4}>
+              <Stat bg="white" border="1px solid" borderColor="gray.200" borderRadius="md" boxShadow="sm" p={4}>
                 <StatLabel>Categoria</StatLabel>
                 <StatNumber fontSize="xl">{reimbursement.categoria.nome}</StatNumber>
               </Stat>
             </GridItem>
             <GridItem>
-              <Stat bg="white" border="1px solid" borderColor="gray.200" borderRadius="md" p={4}>
+              <Stat bg="white" border="1px solid" borderColor="gray.200" borderRadius="md" boxShadow="sm" p={4}>
                 <StatLabel>Data da despesa</StatLabel>
                 <StatNumber fontSize="xl">{formatDate(reimbursement.dataDespesa)}</StatNumber>
               </Stat>
@@ -525,7 +501,11 @@ export function ReimbursementDetailPage() {
             </Flex>
 
             {reimbursement.anexos.length === 0 ? (
-              <Text color="gray.500">Nenhum anexo registrado.</Text>
+              <EmptyState
+                description="Anexos simulados adicionados em rascunho aparecerao aqui."
+                framed={false}
+                title="Nenhum anexo registrado"
+              />
             ) : (
               <TableContainer>
                 <Table size="sm">
@@ -563,7 +543,11 @@ export function ReimbursementDetailPage() {
               Historico
             </Heading>
             {reimbursement.historico.length === 0 ? (
-              <Text color="gray.500">Nenhum historico registrado.</Text>
+              <EmptyState
+                description="Acoes feitas na solicitacao aparecerao nesta linha do tempo."
+                framed={false}
+                title="Nenhum historico registrado"
+              />
             ) : (
               <Stack spacing={4}>
                 {reimbursement.historico.map((entry) => (

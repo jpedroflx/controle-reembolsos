@@ -8,9 +8,9 @@ type PagePlaceholderProps = {
 
 export function PagePlaceholder({ badge = "Base", description, title }: PagePlaceholderProps) {
   return (
-    <Box bg="white" border="1px solid" borderColor="gray.200" borderRadius="md" p={6}>
+    <Box bg="white" border="1px solid" borderColor="gray.200" borderRadius="md" boxShadow="sm" p={{ base: 5, md: 6 }}>
       <Stack spacing={3}>
-        <Badge alignSelf="flex-start" colorScheme="red">
+        <Badge alignSelf="flex-start" colorScheme="red" rounded="full">
           {badge}
         </Badge>
         <Heading color="gray.900" size="lg">

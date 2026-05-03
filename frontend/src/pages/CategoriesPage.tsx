@@ -20,6 +20,7 @@ import {
   ModalFooter,
   ModalHeader,
   ModalOverlay,
+  SimpleGrid,
   Skeleton,
   Stack,
   Switch,
@@ -34,10 +35,12 @@ import {
   useDisclosure,
   useToast
 } from "@chakra-ui/react";
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
 
 import { api } from "../api/http";
+import { EmptyState } from "../components/EmptyState";
+import { PageHeader } from "../components/PageHeader";
 import { useAuth } from "../contexts/AuthContext";
 import type { Category } from "../types/categories";
 import { getApiErrorMessage, getApiErrorStatus } from "../utils/apiErrors";
@@ -83,6 +86,8 @@ export function CategoriesPage() {
   const [editError, setEditError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const activeCount = useMemo(() => categories.filter((category) => category.active).length, [categories]);
+  const inactiveCount = categories.length - activeCount;
 
   const fetchCategories = useCallback(async () => {
     setIsLoading(true);
@@ -224,7 +229,7 @@ export function CategoriesPage() {
   if (userRole !== "ADMIN") {
     return (
       <Stack spacing={4}>
-        <Heading size="lg">Gestao de categorias</Heading>
+        <PageHeader title="Gestao de categorias" />
         <Alert status="warning">
           <AlertIcon />
           Apenas usuarios ADMIN podem acessar esta area.
@@ -238,18 +243,45 @@ export function CategoriesPage() {
 
   return (
     <Stack spacing={6}>
-      <Flex align={{ base: "flex-start", md: "center" }} gap={4} justify="space-between">
-        <Stack spacing={1}>
-          <Heading size="lg">Gestao de categorias</Heading>
-          <Text color="gray.600">Crie, edite e ative ou inative categorias de reembolso.</Text>
-        </Stack>
-        <Button isLoading={isLoading} variant="outline" onClick={() => void fetchCategories()}>
-          Atualizar
-        </Button>
-      </Flex>
+      <PageHeader
+        description="Crie, edite e ative ou inative categorias de reembolso."
+        title="Gestao de categorias"
+        actions={
+          <Button isLoading={isLoading} variant="outline" onClick={() => void fetchCategories()}>
+            Atualizar
+          </Button>
+        }
+      />
 
-      <Box bg="white" border="1px solid" borderColor="gray.200" borderRadius="md" p={6}>
-        <Box as="form" onSubmit={handleCreate}>
+      <SimpleGrid columns={{ base: 1, sm: 3 }} spacing={4}>
+        <Box bg="white" border="1px solid" borderColor="gray.200" borderRadius="md" p={4}>
+          <Text color="gray.500" fontSize="sm">
+            Total
+          </Text>
+          <Text fontSize="2xl" fontWeight="bold">
+            {categories.length}
+          </Text>
+        </Box>
+        <Box bg="white" border="1px solid" borderColor="gray.200" borderRadius="md" p={4}>
+          <Text color="gray.500" fontSize="sm">
+            Ativas
+          </Text>
+          <Text color="green.600" fontSize="2xl" fontWeight="bold">
+            {activeCount}
+          </Text>
+        </Box>
+        <Box bg="white" border="1px solid" borderColor="gray.200" borderRadius="md" p={4}>
+          <Text color="gray.500" fontSize="sm">
+            Inativas
+          </Text>
+          <Text color="gray.700" fontSize="2xl" fontWeight="bold">
+            {inactiveCount}
+          </Text>
+        </Box>
+      </SimpleGrid>
+
+      <Box bg="white" border="1px solid" borderColor="gray.200" borderRadius="md" boxShadow="sm" p={{ base: 5, md: 6 }}>
+        <Box as="form" noValidate onSubmit={handleCreate}>
           <Stack spacing={4}>
             <Heading size="md">Nova categoria</Heading>
 
@@ -263,7 +295,7 @@ export function CategoriesPage() {
             <Flex align={{ base: "stretch", md: "flex-start" }} direction={{ base: "column", md: "row" }} gap={4}>
               <FormControl isInvalid={Boolean(createErrors.name)} isRequired>
                 <FormLabel>Nome</FormLabel>
-                <Input value={createName} onChange={(event) => setCreateName(event.target.value)} />
+                <Input focusBorderColor="red.500" value={createName} onChange={(event) => setCreateName(event.target.value)} />
                 <FormErrorMessage>{createErrors.name}</FormErrorMessage>
               </FormControl>
 
@@ -308,13 +340,14 @@ export function CategoriesPage() {
       ) : null}
 
       {!isLoading && !loadError && categories.length === 0 ? (
-        <Box bg="white" border="1px solid" borderColor="gray.200" borderRadius="md" p={8} textAlign="center">
-          <Heading size="md">Nenhuma categoria cadastrada</Heading>
-        </Box>
+        <EmptyState
+          description="Cadastre categorias para que colaboradores possam classificar novas solicitacoes."
+          title="Nenhuma categoria cadastrada"
+        />
       ) : null}
 
       {!isLoading && !loadError && categories.length > 0 ? (
-        <TableContainer bg="white" border="1px solid" borderColor="gray.200" borderRadius="md">
+        <TableContainer bg="white" border="1px solid" borderColor="gray.200" borderRadius="md" boxShadow="sm">
           <Table size="sm">
             <Thead bg="gray.50">
               <Tr>
@@ -374,7 +407,7 @@ export function CategoriesPage() {
 
               <FormControl isInvalid={Boolean(editErrors.name)} isRequired>
                 <FormLabel>Nome</FormLabel>
-                <Input value={editName} onChange={(event) => setEditName(event.target.value)} />
+                <Input focusBorderColor="red.500" value={editName} onChange={(event) => setEditName(event.target.value)} />
                 <FormErrorMessage>{editErrors.name}</FormErrorMessage>
               </FormControl>
 

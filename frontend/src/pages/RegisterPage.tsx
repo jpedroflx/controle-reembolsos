@@ -114,8 +114,13 @@ export function RegisterPage() {
 
   return (
     <Box minH="100vh" bg="gray.50">
-      <Container maxW="md" py={12}>
-        <Box bg="white" border="1px solid" borderColor="gray.200" borderRadius="md" p={6}>
+      <Container maxW="md" py={{ base: 8, md: 14 }}>
+        <Stack mb={6} spacing={1} textAlign="center">
+          <Heading size="lg">Controle de Reembolsos</Heading>
+          <Text color="gray.600">Crie um usuario para testar os perfis</Text>
+        </Stack>
+
+        <Box bg="white" border="1px solid" borderColor="gray.200" borderRadius="md" boxShadow="sm" p={{ base: 5, md: 6 }}>
           <Box as="form" noValidate onSubmit={handleSubmit}>
             <Stack spacing={5}>
               <Stack spacing={1}>
@@ -132,7 +137,12 @@ export function RegisterPage() {
 
               <FormControl isInvalid={Boolean(fieldErrors.name)} isRequired>
                 <FormLabel>Nome</FormLabel>
-                <Input autoComplete="name" value={name} onChange={(event) => setName(event.target.value)} />
+                <Input
+                  autoComplete="name"
+                  focusBorderColor="red.500"
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                />
                 <FormErrorMessage>{fieldErrors.name}</FormErrorMessage>
               </FormControl>
 
@@ -140,6 +150,7 @@ export function RegisterPage() {
                 <FormLabel>Email</FormLabel>
                 <Input
                   autoComplete="email"
+                  focusBorderColor="red.500"
                   type="email"
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
@@ -151,6 +162,7 @@ export function RegisterPage() {
                 <FormLabel>Senha</FormLabel>
                 <Input
                   autoComplete="new-password"
+                  focusBorderColor="red.500"
                   type="password"
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
@@ -160,7 +172,7 @@ export function RegisterPage() {
 
               <FormControl isInvalid={Boolean(fieldErrors.role)} isRequired>
                 <FormLabel>Perfil</FormLabel>
-                <Select value={role} onChange={(event) => setRole(event.target.value as UserRole)}>
+                <Select focusBorderColor="red.500" value={role} onChange={(event) => setRole(event.target.value as UserRole)}>
                   {allowedRoles.map((allowedRole) => (
                     <option key={allowedRole} value={allowedRole}>
                       {allowedRole}
@@ -170,7 +182,7 @@ export function RegisterPage() {
                 <FormErrorMessage>{fieldErrors.role}</FormErrorMessage>
               </FormControl>
 
-              <Button colorScheme="red" isLoading={isLoading} type="submit">
+              <Button isLoading={isLoading} type="submit">
                 Criar usuario
               </Button>
 

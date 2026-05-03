@@ -1,7 +1,6 @@
 import {
   Alert,
   AlertIcon,
-  Badge,
   Box,
   Button,
   ButtonGroup,
@@ -9,7 +8,6 @@ import {
   FormControl,
   FormErrorMessage,
   FormLabel,
-  Heading,
   HStack,
   Modal,
   ModalBody,
@@ -18,6 +16,7 @@ import {
   ModalFooter,
   ModalHeader,
   ModalOverlay,
+  SimpleGrid,
   Skeleton,
   Stack,
   Table,
@@ -36,29 +35,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
 
 import { api } from "../api/http";
+import { EmptyState } from "../components/EmptyState";
+import { PageHeader } from "../components/PageHeader";
+import { StatusBadge } from "../components/StatusBadge";
 import { useAuth } from "../contexts/AuthContext";
-import type { ReimbursementStatus, ReimbursementSummary } from "../types/reimbursements";
+import type { ReimbursementSummary } from "../types/reimbursements";
 import { getApiErrorMessage, getApiErrorStatus } from "../utils/apiErrors";
 
 type ReimbursementAction = "submit" | "approve" | "reject" | "pay" | "cancel";
-
-const statusLabels: Record<ReimbursementStatus, string> = {
-  RASCUNHO: "Rascunho",
-  ENVIADO: "Enviado",
-  APROVADO: "Aprovado",
-  REJEITADO: "Rejeitado",
-  PAGO: "Pago",
-  CANCELADO: "Cancelado"
-};
-
-const statusColors: Record<ReimbursementStatus, string> = {
-  RASCUNHO: "gray",
-  ENVIADO: "blue",
-  APROVADO: "green",
-  REJEITADO: "red",
-  PAGO: "purple",
-  CANCELADO: "orange"
-};
 
 const actionSuccessMessages: Record<ReimbursementAction, string> = {
   submit: "Solicitacao enviada.",
@@ -263,7 +247,7 @@ export function DashboardPage() {
             </Stack>
           </Td>
           <Td>
-            <Badge colorScheme={statusColors[reimbursement.status]}>{statusLabels[reimbursement.status]}</Badge>
+            <StatusBadge status={reimbursement.status} />
           </Td>
           <Td isNumeric>{formatCurrency(reimbursement.valor)}</Td>
           <Td>{reimbursement.categoria.nome}</Td>
@@ -296,27 +280,24 @@ export function DashboardPage() {
 
   return (
     <Stack spacing={6}>
-      <Flex align={{ base: "flex-start", md: "center" }} gap={4} justify="space-between">
-        <Stack spacing={1}>
-          <Heading size="lg">Dashboard</Heading>
-          <Text color="gray.600">
-            {reimbursements.length} solicitacao{reimbursements.length === 1 ? "" : "es"} em exibicao
-          </Text>
-        </Stack>
-
-        <HStack>
-          {userRole === "COLABORADOR" ? (
-            <Button as={RouterLink} colorScheme="red" to="/reimbursements/new">
-              Nova solicitacao
+      <PageHeader
+        description={`${reimbursements.length} solicitacao${reimbursements.length === 1 ? "" : "es"} em exibicao`}
+        title="Dashboard"
+        actions={
+          <HStack flexWrap="wrap" justify={{ base: "stretch", md: "flex-end" }} w="100%">
+            {userRole === "COLABORADOR" ? (
+              <Button as={RouterLink} to="/reimbursements/new">
+                Nova solicitacao
+              </Button>
+            ) : null}
+            <Button isLoading={isLoading} variant="outline" onClick={() => void fetchReimbursements()}>
+              Atualizar
             </Button>
-          ) : null}
-          <Button isLoading={isLoading} variant="outline" onClick={() => void fetchReimbursements()}>
-            Atualizar
-          </Button>
-        </HStack>
-      </Flex>
+          </HStack>
+        }
+      />
 
-      <HStack spacing={4}>
+      <SimpleGrid columns={{ base: 1, sm: 2 }} spacing={4}>
         <Box bg="white" border="1px solid" borderColor="gray.200" borderRadius="md" minW="180px" p={4}>
           <Text color="gray.500" fontSize="sm">
             Total listado
@@ -333,7 +314,7 @@ export function DashboardPage() {
             {userRole ?? "-"}
           </Text>
         </Box>
-      </HStack>
+      </SimpleGrid>
 
       {error ? (
         <Alert status="error">
@@ -356,20 +337,21 @@ export function DashboardPage() {
       ) : null}
 
       {!isLoading && !error && reimbursements.length === 0 ? (
-        <Box bg="white" border="1px solid" borderColor="gray.200" borderRadius="md" p={8} textAlign="center">
-          <Stack align="center" spacing={3}>
-            <Heading size="md">Nenhuma solicitacao encontrada</Heading>
-            {userRole === "COLABORADOR" ? (
+        <EmptyState
+          description="Quando houver solicitacoes disponiveis para o seu perfil, elas aparecerao aqui."
+          title="Nenhuma solicitacao encontrada"
+          action={
+            userRole === "COLABORADOR" ? (
               <Button as={RouterLink} colorScheme="red" to="/reimbursements/new">
                 Criar solicitacao
               </Button>
-            ) : null}
-          </Stack>
-        </Box>
+            ) : null
+          }
+        />
       ) : null}
 
       {!isLoading && !error && reimbursements.length > 0 ? (
-        <TableContainer bg="white" border="1px solid" borderColor="gray.200" borderRadius="md">
+        <TableContainer bg="white" border="1px solid" borderColor="gray.200" borderRadius="md" boxShadow="sm">
           <Table size="sm">
             <Thead bg="gray.50">
               <Tr>

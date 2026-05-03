@@ -1,6 +1,21 @@
 import { extendTheme } from "@chakra-ui/react";
 
 export const theme = extendTheme({
+  components: {
+    Button: {
+      defaultProps: {
+        colorScheme: "red"
+      }
+    },
+    Table: {
+      baseStyle: {
+        th: {
+          letterSpacing: "0",
+          textTransform: "none"
+        }
+      }
+    }
+  },
   colors: {
     brand: {
       500: "#c8102e",
@@ -14,6 +29,7 @@ export const theme = extendTheme({
   styles: {
     global: {
       body: {
+        bg: "gray.50",
         color: "gray.900"
       }
     }

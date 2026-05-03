@@ -1,8 +1,10 @@
-import { Alert, AlertIcon, Button, Heading, Skeleton, Stack, Text, useToast } from "@chakra-ui/react";
+import { Alert, AlertIcon, Button, Skeleton, Stack, useToast } from "@chakra-ui/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link as RouterLink, useNavigate, useParams } from "react-router-dom";
 
 import { api } from "../api/http";
+import { EmptyState } from "../components/EmptyState";
+import { PageHeader } from "../components/PageHeader";
 import { ReimbursementForm } from "../components/ReimbursementForm";
 import { useAuth } from "../contexts/AuthContext";
 import type { Category } from "../types/categories";
@@ -109,10 +111,10 @@ export function ReimbursementEditPage() {
 
   return (
     <Stack spacing={6}>
-      <Stack spacing={1}>
-        <Heading size="lg">Editar solicitacao</Heading>
-        <Text color="gray.600">Apenas o colaborador dono pode editar solicitacoes em rascunho.</Text>
-      </Stack>
+      <PageHeader
+        description="Apenas o colaborador dono pode editar solicitacoes em rascunho."
+        title="Editar solicitacao"
+      />
 
       {isLoading ? (
         <Stack>
@@ -144,10 +146,10 @@ export function ReimbursementEditPage() {
       ) : null}
 
       {!isLoading && !loadError && canEdit && categories.length === 0 ? (
-        <Alert status="warning">
-          <AlertIcon />
-          Nenhuma categoria ativa disponivel para atualizar a solicitacao.
-        </Alert>
+        <EmptyState
+          description="Peca para um administrador ativar uma categoria antes de atualizar a solicitacao."
+          title="Nenhuma categoria ativa disponivel"
+        />
       ) : null}
 
       {!isLoading && !loadError && canEdit && initialValues && categories.length > 0 ? (

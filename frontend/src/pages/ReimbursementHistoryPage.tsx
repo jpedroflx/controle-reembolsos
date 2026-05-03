@@ -7,8 +7,8 @@ export function ReimbursementHistoryPage() {
 
   return (
     <PagePlaceholder
-      description={`Histórico da solicitação ${id ?? ""}, exibindo ação, usuário, data e observação.`}
-      title="Histórico"
+      description={`Historico da solicitacao ${id ?? ""}, exibindo acao, usuario, data e observacao.`}
+      title="Historico"
     />
   );
 }

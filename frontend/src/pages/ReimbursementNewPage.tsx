@@ -1,8 +1,10 @@
-import { Alert, AlertIcon, Button, Heading, Skeleton, Stack, Text, useToast } from "@chakra-ui/react";
+import { Alert, AlertIcon, Button, Skeleton, Stack, useToast } from "@chakra-ui/react";
 import { useCallback, useEffect, useState } from "react";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
 
 import { api } from "../api/http";
+import { EmptyState } from "../components/EmptyState";
+import { PageHeader } from "../components/PageHeader";
 import { ReimbursementForm } from "../components/ReimbursementForm";
 import { useAuth } from "../contexts/AuthContext";
 import type { Category } from "../types/categories";
@@ -67,7 +69,7 @@ export function ReimbursementNewPage() {
   if (userRole !== "COLABORADOR") {
     return (
       <Stack spacing={4}>
-        <Heading size="lg">Nova solicitacao</Heading>
+        <PageHeader title="Nova solicitacao" />
         <Alert status="warning">
           <AlertIcon />
           Apenas usuarios com perfil COLABORADOR podem criar solicitacoes.
@@ -81,10 +83,7 @@ export function ReimbursementNewPage() {
 
   return (
     <Stack spacing={6}>
-      <Stack spacing={1}>
-        <Heading size="lg">Nova solicitacao</Heading>
-        <Text color="gray.600">Preencha os dados da despesa para criar um rascunho.</Text>
-      </Stack>
+      <PageHeader description="Preencha os dados da despesa para criar um rascunho." title="Nova solicitacao" />
 
       {isLoadingCategories ? (
         <Stack>
@@ -104,10 +103,10 @@ export function ReimbursementNewPage() {
       ) : null}
 
       {!isLoadingCategories && !loadError && categories.length === 0 ? (
-        <Alert status="warning">
-          <AlertIcon />
-          Nenhuma categoria ativa disponivel para novas solicitacoes.
-        </Alert>
+        <EmptyState
+          description="Peca para um administrador ativar ou criar uma categoria antes de registrar reembolsos."
+          title="Nenhuma categoria ativa disponivel"
+        />
       ) : null}
 
       {!isLoadingCategories && !loadError && categories.length > 0 ? (
