@@ -26,6 +26,41 @@ export type ReimbursementSummary = {
   };
 };
 
+export type ReimbursementAttachment = {
+  id: string;
+  nomeArquivo: string;
+  urlArquivo: string;
+  tipoArquivo: "PDF" | "JPG" | "JPEG" | "PNG";
+  criadoEm: string;
+};
+
+export type ReimbursementHistoryAction =
+  | "CREATED"
+  | "UPDATED"
+  | "SUBMITTED"
+  | "APPROVED"
+  | "REJECTED"
+  | "PAID"
+  | "CANCELED";
+
+export type ReimbursementHistoryEntry = {
+  id: string;
+  acao: ReimbursementHistoryAction;
+  observacao: string;
+  criadoEm: string;
+  usuario: {
+    id: string;
+    nome: string;
+    email: string;
+    perfil: UserRole;
+  };
+};
+
+export type ReimbursementDetail = ReimbursementSummary & {
+  anexos: ReimbursementAttachment[];
+  historico: ReimbursementHistoryEntry[];
+};
+
 export type ReimbursementFormPayload = {
   categoriaId: string;
   descricao: string;
