@@ -1,0 +1,106 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  COLABORADOR
+  GESTOR
+  FINANCEIRO
+  ADMIN
+}
+
+enum ReimbursementStatus {
+  RASCUNHO
+  ENVIADO
+  APROVADO
+  REJEITADO
+  PAGO
+  CANCELADO
+}
+
+enum HistoryAction {
+  CREATED
+  UPDATED
+  SUBMITTED
+  APPROVED
+  REJECTED
+  PAID
+  CANCELED
+}
+
+model User {
+  id             String                 @id @default(cuid())
+  name           String
+  email          String                 @unique
+  passwordHash   String
+  role           Role
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  requests       ReimbursementRequest[] @relation("RequesterRequests")
+  historyEntries ReimbursementHistory[]
+
+  @@index([role])
+}
+
+model Category {
+  id        String                 @id @default(cuid())
+  name      String                 @unique
+  active    Boolean                @default(true)
+  createdAt DateTime               @default(now())
+  updatedAt DateTime               @updatedAt
+  requests  ReimbursementRequest[]
+}
+
+model ReimbursementRequest {
+  id              String                 @id @default(cuid())
+  requesterId     String
+  categoryId      String
+  description     String
+  amount          Decimal
+  expenseDate     DateTime
+  status          ReimbursementStatus    @default(RASCUNHO)
+  rejectionReason String?
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+  requester       User                   @relation("RequesterRequests", fields: [requesterId], references: [id], onDelete: Restrict)
+  category        Category               @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  attachments     Attachment[]
+  history         ReimbursementHistory[]
+
+  @@index([requesterId])
+  @@index([categoryId])
+  @@index([status])
+  @@index([expenseDate])
+}
+
+model Attachment {
+  id        String               @id @default(cuid())
+  requestId String
+  fileName  String
+  fileUrl   String
+  fileType  String
+  createdAt DateTime             @default(now())
+  request   ReimbursementRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@index([requestId])
+}
+
+model ReimbursementHistory {
+  id        String               @id @default(cuid())
+  requestId String
+  userId    String
+  action    HistoryAction
+  note      String
+  createdAt DateTime             @default(now())
+  request   ReimbursementRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  user      User                 @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([requestId])
+  @@index([userId])
+  @@index([action])
+}
