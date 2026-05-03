@@ -1,10 +1,10 @@
 # Controle de Reembolsos
 
-Aplicacao fullstack para controle de solicitacoes de reembolso, desenvolvida como desafio tecnico de estagio.
+Aplicação fullstack para controle de solicitações de reembolso, desenvolvida como desafio técnico de estágio.
 
-O sistema permite que colaboradores criem e acompanhem solicitacoes, gestores aprovem ou rejeitem pedidos, o financeiro realize pagamentos e administradores gerenciem categorias e usuarios. A aplicacao roda localmente com SQLite, sem servicos externos obrigatorios.
+O sistema permite que colaboradores criem solicitações, gestores aprovem ou rejeitem pedidos, o financeiro realize pagamentos e administradores gerenciem categorias e usuários. A aplicação roda localmente com SQLite.
 
-## Stack utilizada
+## Stack
 
 ### Backend
 
@@ -31,22 +31,15 @@ O sistema permite que colaboradores criem e acompanhem solicitacoes, gestores ap
 - Vitest
 - React Testing Library
 
-## Requisitos de ambiente
+## Requisitos
 
 - Node.js 20 ou superior
 - npm 10 ou superior
 - Git
 
-O projeto foi validado localmente com:
+Não é necessário instalar SQLite separadamente. O banco é um arquivo local gerenciado pelo Prisma.
 
-```powershell
-node -v
-npm -v
-```
-
-Tambem nao e necessario instalar SQLite manualmente; o banco e um arquivo local gerenciado pelo Prisma.
-
-## Estrutura do monorepo
+## Estrutura
 
 ```text
 controle-reembolsos/
@@ -60,33 +53,26 @@ controle-reembolsos/
   README.md
 ```
 
-- `backend`: API REST com Express, Prisma e regras de negocio.
-- `frontend`: SPA React com rotas protegidas, telas e integracao com a API.
-- Raiz do projeto: scripts npm com workspaces para rodar backend e frontend juntos.
+## Instalação
 
-## Instalacao
-
-Abra um terminal na pasta raiz do projeto:
+Na raiz `controle-reembolsos`:
 
 ```powershell
-cd controle-reembolsos
 npm install
 ```
 
-Esse comando instala as dependencias do backend e do frontend via npm workspaces.
-
-## Configuracao de ambiente
+## Configuração de ambiente
 
 Crie os arquivos `.env` a partir dos exemplos.
 
-Na pasta raiz `controle-reembolsos`, rode:
+No Windows, na raiz `controle-reembolsos`:
 
 ```powershell
 Copy-Item backend\.env.example backend\.env
 Copy-Item frontend\.env.example frontend\.env
 ```
 
-No Linux/macOS, o equivalente e:
+No Linux/macOS:
 
 ```bash
 cp backend/.env.example backend/.env
@@ -109,9 +95,9 @@ CORS_ORIGIN="http://localhost:5173"
 VITE_API_URL="http://localhost:3333"
 ```
 
-## Banco de dados, migrations e seed
+## Banco de dados e seed
 
-Na raiz `controle-reembolsos`, rode:
+Na raiz `controle-reembolsos`:
 
 ```powershell
 npm run prisma:migrate
@@ -124,13 +110,11 @@ O banco SQLite fica em:
 backend/prisma/dev.db
 ```
 
-O seed cria usuarios de teste e categorias iniciais.
+O seed cria usuários de teste e categorias iniciais.
 
-## Como iniciar o projeto
+## Executando o projeto
 
-### Opcao 1: iniciar backend e frontend juntos
-
-Use um terminal na raiz `controle-reembolsos`:
+Para iniciar backend e frontend juntos, use um terminal na raiz `controle-reembolsos`:
 
 ```powershell
 npm run dev
@@ -144,7 +128,7 @@ Frontend: http://localhost:5173
 Health:   http://localhost:3333/health
 ```
 
-### Opcao 2: iniciar separadamente
+Para iniciar separadamente:
 
 Terminal 1, na raiz `controle-reembolsos`:
 
@@ -158,49 +142,33 @@ Terminal 2, na raiz `controle-reembolsos`:
 npm run dev:frontend
 ```
 
-## Como rodar testes
+## Testes, typecheck e build
 
 Na raiz `controle-reembolsos`:
 
 ```powershell
+npm run typecheck
 npm test
+npm run build
 ```
 
-Esse comando roda:
-
-- testes de backend com Jest e Supertest;
-- testes de frontend com Vitest e React Testing Library.
-
-Para rodar separadamente:
+Para rodar testes separadamente:
 
 ```powershell
 npm test -w backend
 npm test -w frontend
 ```
 
-## Outros comandos uteis
-
-Na raiz `controle-reembolsos`:
+Outros comandos úteis:
 
 ```powershell
-npm run typecheck
-npm run build
 npm run prisma:generate
-```
-
-No backend:
-
-```powershell
 npm run prisma:studio -w backend
 ```
 
-## Usuarios de teste
+## Usuários de teste
 
-Todos os usuarios criados pelo seed usam a senha:
-
-```text
-Senha@123
-```
+Todos os usuários criados pelo seed usam a senha `Senha@123`.
 
 | Perfil | Email | Senha |
 | --- | --- | --- |
@@ -209,83 +177,61 @@ Senha@123
 | FINANCEIRO | financeiro@teste.com | Senha@123 |
 | ADMIN | admin@teste.com | Senha@123 |
 
-O cadastro publico da aplicacao cria apenas usuarios `COLABORADOR`. Os perfis `GESTOR`, `FINANCEIRO` e `ADMIN` ficam disponiveis pelos dados do seed.
+O cadastro público cria apenas usuários `COLABORADOR`. Os perfis `GESTOR`, `FINANCEIRO` e `ADMIN` ficam disponíveis pelo seed.
 
-## Fluxo manual sugerido para avaliacao
+## Fluxo manual sugerido
 
 1. Entrar como `colaborador@teste.com`.
-2. Criar uma nova solicitacao em `Nova solicitacao`.
-3. Adicionar anexo simulado enquanto a solicitacao estiver em `RASCUNHO`.
-4. Enviar a solicitacao.
+2. Criar uma solicitação em `Nova solicitação`.
+3. Adicionar um anexo simulado enquanto a solicitação estiver em `RASCUNHO`.
+4. Enviar a solicitação.
 5. Sair e entrar como `gestor@teste.com`.
-6. Aprovar ou rejeitar solicitacoes `ENVIADAS`.
+6. Aprovar ou rejeitar solicitações `ENVIADAS`.
 7. Se aprovar, sair e entrar como `financeiro@teste.com`.
-8. Pagar solicitacoes `APROVADAS`.
+8. Pagar solicitações `APROVADAS`.
 9. Entrar como `admin@teste.com`.
-10. Gerenciar categorias, ativando e inativando registros.
+10. Criar, editar, ativar e inativar categorias.
 
-## Perfis e permissoes
+## Perfis e permissões
 
-### COLABORADOR
+| Perfil | Permissões principais |
+| --- | --- |
+| COLABORADOR | Cria solicitações, lista apenas as próprias, edita/envia/cancela em `RASCUNHO` e adiciona anexos simulados em solicitações próprias em `RASCUNHO`. |
+| GESTOR | Lista solicitações `ENVIADAS`, aprova e rejeita com justificativa obrigatória. |
+| FINANCEIRO | Lista solicitações `APROVADAS` e marca como pagas. |
+| ADMIN | Visualiza dados gerais, lista usuários e gerencia categorias. |
 
-- Cria solicitacoes.
-- Lista apenas suas proprias solicitacoes.
-- Edita apenas solicitacoes proprias em `RASCUNHO`.
-- Envia solicitacoes de `RASCUNHO` para `ENVIADO`.
-- Cancela solicitacoes proprias em `RASCUNHO`.
-- Adiciona anexos simulados apenas em solicitacoes proprias em `RASCUNHO`.
+## Status e transições
 
-### GESTOR
-
-- Lista solicitacoes com status `ENVIADO`.
-- Aprova solicitacoes `ENVIADAS`.
-- Rejeita solicitacoes `ENVIADAS`, com justificativa obrigatoria.
-
-### FINANCEIRO
-
-- Lista solicitacoes com status `APROVADO`.
-- Paga solicitacoes `APROVADAS`.
-
-### ADMIN
-
-- Visualiza dados gerais.
-- Lista usuarios.
-- Cria, edita, ativa e inativa categorias.
-
-## Status e transicoes
-
-| Acao | Transicao | Perfil |
+| Ação | Transição | Perfil |
 | --- | --- | --- |
-| Criar solicitacao | inicial `RASCUNHO` | COLABORADOR |
+| Criar solicitação | inicial `RASCUNHO` | COLABORADOR |
 | Enviar | `RASCUNHO` -> `ENVIADO` | COLABORADOR dono |
 | Aprovar | `ENVIADO` -> `APROVADO` | GESTOR |
 | Rejeitar | `ENVIADO` -> `REJEITADO` | GESTOR |
 | Pagar | `APROVADO` -> `PAGO` | FINANCEIRO |
 | Cancelar | `RASCUNHO` -> `CANCELADO` | COLABORADOR dono |
 
-Transicoes invalidas retornam erro HTTP `400`. Perfis sem permissao retornam `403`.
+Transições inválidas retornam `400`. Perfis sem permissão retornam `403`.
 
 ## Endpoints principais
 
-Todas as rotas protegidas usam o header:
+Rotas protegidas usam:
 
 ```http
 Authorization: Bearer <token>
 ```
 
-### Health
+### Autenticação e usuários
 
-| Metodo | Rota | Descricao |
-| --- | --- | --- |
-| GET | `/health` | Verifica se a API esta online |
+| Método | Rota | Perfil | Descrição |
+| --- | --- | --- | --- |
+| GET | `/health` | Público | Verifica se a API está online |
+| POST | `/auth/login` | Público | Autentica email/senha e retorna token JWT |
+| POST | `/users` | Público | Cria usuário `COLABORADOR` com senha hasheada |
+| GET | `/users` | ADMIN | Lista usuários sem senha |
 
-### Autenticacao
-
-| Metodo | Rota | Descricao |
-| --- | --- | --- |
-| POST | `/auth/login` | Autentica email/senha e retorna token JWT |
-
-Body:
+Body de login:
 
 ```json
 {
@@ -294,34 +240,25 @@ Body:
 }
 ```
 
-### Usuarios
-
-| Metodo | Rota | Perfil | Descricao |
-| --- | --- | --- | --- |
-| POST | `/users` | Publico | Cria usuario `COLABORADOR` com senha hasheada |
-| GET | `/users` | ADMIN | Lista usuarios sem senha |
-
-Body de criacao:
+Body de cadastro:
 
 ```json
 {
-  "name": "Novo Usuario",
+  "name": "Novo Usuário",
   "email": "novo@teste.com",
   "password": "Senha@123"
 }
 ```
 
-A API ignora qualquer tentativa de definir perfil privilegiado no cadastro publico e sempre cria o usuario como `COLABORADOR`.
+Mesmo que o cliente envie um perfil privilegiado no cadastro público, a API cria o usuário como `COLABORADOR`.
 
 ### Categorias
 
-| Metodo | Rota | Perfil | Descricao |
+| Método | Rota | Perfil | Descrição |
 | --- | --- | --- | --- |
 | GET | `/categories` | Autenticado | Lista categorias |
 | POST | `/categories` | ADMIN | Cria categoria |
 | PUT | `/categories/:id` | ADMIN | Edita nome e status ativo/inativo |
-
-Body de criacao/edicao:
 
 ```json
 {
@@ -330,53 +267,46 @@ Body de criacao/edicao:
 }
 ```
 
-Categorias inativas nao aparecem como opcao para novas solicitacoes no frontend e nao podem ser usadas em novas solicitacoes pela API.
+Categorias inativas não aparecem como opção para novas solicitações no frontend e não podem ser usadas em novas solicitações pela API.
 
-### Solicitacoes de reembolso
+### Solicitações
 
-| Metodo | Rota | Perfil | Descricao |
+| Método | Rota | Perfil | Descrição |
 | --- | --- | --- | --- |
-| GET | `/reimbursements` | Autenticado | Lista solicitacoes conforme perfil |
-| POST | `/reimbursements` | COLABORADOR | Cria solicitacao em `RASCUNHO` |
-| GET | `/reimbursements/:id` | Autenticado com acesso | Exibe detalhe da solicitacao |
-| PUT | `/reimbursements/:id` | COLABORADOR dono | Edita solicitacao em `RASCUNHO` |
-
-Body de criacao/edicao:
+| GET | `/reimbursements` | Autenticado | Lista solicitações conforme o perfil |
+| POST | `/reimbursements` | COLABORADOR | Cria solicitação em `RASCUNHO` |
+| GET | `/reimbursements/:id` | Autenticado com acesso | Exibe detalhe da solicitação |
+| PUT | `/reimbursements/:id` | COLABORADOR dono | Edita solicitação em `RASCUNHO` |
 
 ```json
 {
   "categoriaId": "id-da-categoria",
-  "descricao": "Almoco em viagem",
+  "descricao": "Almoço em viagem",
   "valor": 50.75,
   "dataDespesa": "2026-05-01T00:00:00.000Z"
 }
 ```
 
-### Transicoes de status
+### Transições, histórico e anexos
 
-| Metodo | Rota | Perfil | Descricao |
+| Método | Rota | Perfil | Descrição |
 | --- | --- | --- | --- |
-| POST | `/reimbursements/:id/submit` | COLABORADOR dono | Envia solicitacao em rascunho |
-| POST | `/reimbursements/:id/approve` | GESTOR | Aprova solicitacao enviada |
-| POST | `/reimbursements/:id/reject` | GESTOR | Rejeita solicitacao enviada |
-| POST | `/reimbursements/:id/pay` | FINANCEIRO | Marca solicitacao aprovada como paga |
-| POST | `/reimbursements/:id/cancel` | COLABORADOR dono | Cancela solicitacao em rascunho |
+| POST | `/reimbursements/:id/submit` | COLABORADOR dono | Envia solicitação em rascunho |
+| POST | `/reimbursements/:id/approve` | GESTOR | Aprova solicitação enviada |
+| POST | `/reimbursements/:id/reject` | GESTOR | Rejeita solicitação enviada |
+| POST | `/reimbursements/:id/pay` | FINANCEIRO | Marca solicitação aprovada como paga |
+| POST | `/reimbursements/:id/cancel` | COLABORADOR dono | Cancela solicitação em rascunho |
+| GET | `/reimbursements/:id/history` | Autenticado com acesso | Lista histórico da solicitação |
+| GET | `/reimbursements/:id/attachments` | Autenticado com acesso | Lista anexos simulados |
+| POST | `/reimbursements/:id/attachments` | COLABORADOR dono | Cria anexo simulado em `RASCUNHO` |
 
-Body de rejeicao:
+Body de rejeição:
 
 ```json
 {
-  "justificativaRejeicao": "Comprovante invalido"
+  "justificativaRejeicao": "Comprovante inválido"
 }
 ```
-
-### Historico e anexos
-
-| Metodo | Rota | Perfil | Descricao |
-| --- | --- | --- | --- |
-| GET | `/reimbursements/:id/history` | Autenticado com acesso | Lista historico da solicitacao |
-| GET | `/reimbursements/:id/attachments` | Autenticado com acesso | Lista anexos simulados |
-| POST | `/reimbursements/:id/attachments` | COLABORADOR dono | Cria anexo simulado em `RASCUNHO` |
 
 Body de anexo simulado:
 
@@ -388,13 +318,9 @@ Body de anexo simulado:
 }
 ```
 
-Tipos permitidos:
+Tipos permitidos: `PDF`, `JPG`, `JPEG`, `PNG`.
 
-```text
-PDF, JPG, JPEG, PNG
-```
-
-## Formato padrao de erro
+## Formato de erro
 
 A API retorna erros no formato:
 
@@ -408,68 +334,63 @@ A API retorna erros no formato:
 
 Status usados:
 
-- `400`: validacao ou regra de negocio invalida;
-- `401`: autenticacao ausente ou invalida;
-- `403`: perfil sem permissao;
-- `404`: recurso nao encontrado;
+- `400`: validação ou regra de negócio inválida;
+- `401`: autenticação ausente ou inválida;
+- `403`: perfil sem permissão;
+- `404`: recurso não encontrado;
 - `500`: erro inesperado.
 
 ## Funcionalidades implementadas
 
 - Login com JWT.
-- Persistencia de sessao no frontend com Context API e localStorage.
-- Cadastro publico de usuarios colaboradores e listagem de usuarios para ADMIN.
-- RBAC no backend e protecao de rotas no frontend.
-- CRUD de categorias sem delete fisico.
-- Ativacao e inativacao de categorias.
-- Criacao, listagem, detalhe e edicao de solicitacoes.
-- Listagem de solicitacoes filtrada por perfil.
-- Transicoes de status com regras por perfil.
-- Justificativa obrigatoria para rejeicao.
-- Historico/auditoria de acoes.
-- Anexos simulados.
-- Validacoes com Zod no backend.
-- Validacoes amigaveis no frontend.
-- Testes de integracao no backend.
-- Testes essenciais no frontend.
-- UI responsiva com Chakra UI.
+- Cadastro público restrito a `COLABORADOR`.
+- Senhas armazenadas com bcrypt.
+- Context API e localStorage para sessão no frontend.
+- Rotas públicas e privadas com React Router.
+- RBAC no backend e proteção de rotas no frontend.
+- CRUD de categorias com ativação/inativação.
+- CRUD de solicitações de reembolso.
+- Listagem de solicitações por perfil.
+- Transições de status com permissões por perfil.
+- Rejeição com justificativa obrigatória.
+- Histórico de ações da solicitação.
+- Anexos simulados com tipo permitido.
+- Validações com Zod no backend.
+- Mensagens de erro, loading, sucesso e estados vazios no frontend.
+- Testes de integração no backend.
+- Testes de frontend com React Testing Library.
+- README com instruções de execução e usuários de teste.
 
 ## Funcionalidades opcionais implementadas
 
 - Soft delete de categorias por campo `active`.
-- Historico de auditoria por acao.
-- Anexos simulados sem storage externo.
-- Testes frontend com React Testing Library.
-- Tela administrativa para categorias.
-- Feedback visual com loading, erros, estados vazios e toasts.
+- Seeds iniciais de usuários e categorias.
+- Dashboard com totais básicos.
+- Testes adicionais para regras de negócio, histórico, anexos e tratamento de erros.
 
-## Decisoes tecnicas
+## Decisões técnicas
 
-- Arquitetura simples em monorepo, adequada para desafio de estagio.
-- Sem Clean Architecture, DDD ou microsservicos para evitar complexidade desnecessaria.
+- Arquitetura simples em monorepo, adequada ao escopo do desafio.
+- Sem Clean Architecture, DDD ou microsserviços.
 - Backend organizado por rotas, controllers, schemas, middlewares e Prisma Client.
-- Prisma com SQLite para facilitar avaliacao local.
-- Zod usado para validar entrada da API.
-- JWT usado para autenticacao stateless.
-- bcrypt usado para hash de senhas.
-- Cadastro publico limitado a `COLABORADOR`; perfis privilegiados sao criados apenas pelo seed.
-- Frontend com Context API para manter usuario, token e perfil.
+- Prisma com SQLite para facilitar avaliação local.
 - Axios centralizado para enviar `Authorization: Bearer <token>`.
-- Frontend esconde acoes conforme perfil/status, mas a API continua sendo a autoridade das regras.
-- Upload real nao foi implementado porque o desafio permite anexo simulado.
+- O frontend esconde ações por perfil/status, mas a API continua sendo a autoridade.
+- Upload real não foi implementado porque o desafio permite anexo simulado.
 
-## Pendencias conhecidas
+## Fora do escopo intencionalmente
 
-- Nao ha upload real para storage externo.
-- Nao ha paginacao, filtros avancados ou ordenacao customizada.
-- Nao ha recuperacao de senha.
-- Nao ha refresh token.
-- Nao ha deploy configurado.
-- Nao ha testes end-to-end com navegador real.
+- Upload real para storage externo.
+- Paginação, filtros avançados e ordenação customizada.
+- Recuperação de senha.
+- Refresh token.
+- Docker Compose.
+- Deploy.
+- Testes end-to-end com navegador real.
 
-Essas pendencias foram deixadas fora para manter o escopo claro, local e facil de avaliar.
+Esses itens foram deixados fora para manter o projeto simples, local e fácil de avaliar.
 
-## Checklist rapido para avaliacao
+## Checklist rápido para avaliação
 
 Na raiz `controle-reembolsos`:
 
