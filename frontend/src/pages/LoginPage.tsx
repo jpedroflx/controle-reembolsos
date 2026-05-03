@@ -57,6 +57,7 @@ export function LoginPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const locationState = location.state as LocationState | null;
+  const [infoMessage, setInfoMessage] = useState(locationState?.message ?? null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fieldErrors, setFieldErrors] = useState<LoginFieldErrors>({});
@@ -66,6 +67,7 @@ export function LoginPage() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
+    setInfoMessage(null);
 
     const nextErrors = validateLoginForm(email, password);
     setFieldErrors(nextErrors);
@@ -114,10 +116,10 @@ export function LoginPage() {
                 <Text color="gray.600">Acesse sua conta.</Text>
               </Stack>
 
-              {locationState?.message ? (
-                <Alert status="success">
+              {infoMessage ? (
+                <Alert status="info">
                   <AlertIcon />
-                  {locationState.message}
+                  {infoMessage}
                 </Alert>
               ) : null}
 
@@ -134,7 +136,10 @@ export function LoginPage() {
                   autoComplete="email"
                   type="email"
                   value={email}
-                  onChange={(event) => setEmail(event.target.value)}
+                  onChange={(event) => {
+                    setEmail(event.target.value);
+                    setInfoMessage(null);
+                  }}
                 />
                 <FormErrorMessage>{fieldErrors.email}</FormErrorMessage>
               </FormControl>
@@ -145,7 +150,10 @@ export function LoginPage() {
                   autoComplete="current-password"
                   type="password"
                   value={password}
-                  onChange={(event) => setPassword(event.target.value)}
+                  onChange={(event) => {
+                    setPassword(event.target.value);
+                    setInfoMessage(null);
+                  }}
                 />
                 <FormErrorMessage>{fieldErrors.password}</FormErrorMessage>
               </FormControl>

@@ -97,7 +97,11 @@ function readStoredSession(): AuthSession | null {
 }
 
 export function AuthProvider({ children }: PropsWithChildren) {
-  const [session, setStoredSession] = useState<AuthSession | null>(() => readStoredSession());
+  const [session, setStoredSession] = useState<AuthSession | null>(() => {
+    const storedSession = readStoredSession();
+    setAuthToken(storedSession?.token ?? null);
+    return storedSession;
+  });
 
   useEffect(() => {
     setAuthToken(session?.token ?? null);
@@ -107,11 +111,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
     () => ({
       clearSession: () => {
         window.localStorage.removeItem(STORAGE_KEY);
+        setAuthToken(null);
         setStoredSession(null);
       },
       isAuthenticated: Boolean(session?.token),
       setSession: (nextSession) => {
         window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextSession));
+        setAuthToken(nextSession.token);
         setStoredSession(nextSession);
       },
       token: session?.token ?? null,
