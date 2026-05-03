@@ -25,3 +25,10 @@ export type ReimbursementSummary = {
     ativo: boolean;
   };
 };
+
+export type ReimbursementFormPayload = {
+  categoriaId: string;
+  descricao: string;
+  valor: number;
+  dataDespesa: string;
+};
