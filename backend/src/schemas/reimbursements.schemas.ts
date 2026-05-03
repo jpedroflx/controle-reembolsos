@@ -35,6 +35,24 @@ export const rejectReimbursementSchema = z.object({
   })
 });
 
+export const createAttachmentSchema = z.object({
+  params: z.object({
+    id: z.string().min(1)
+  }),
+  body: z.object({
+    nomeArquivo: z.string().trim().min(1),
+    urlArquivo: z.string().trim().min(1),
+    tipoArquivo: z
+      .string()
+      .trim()
+      .toUpperCase()
+      .refine((fileType) => ["PDF", "JPG", "JPEG", "PNG"].includes(fileType), {
+        message: "Invalid file type"
+      })
+  })
+});
+
 export type CreateReimbursementInput = z.infer<typeof createReimbursementSchema>["body"];
 export type UpdateReimbursementInput = z.infer<typeof updateReimbursementSchema>["body"];
 export type RejectReimbursementInput = z.infer<typeof rejectReimbursementSchema>["body"];
+export type CreateAttachmentInput = z.infer<typeof createAttachmentSchema>["body"];

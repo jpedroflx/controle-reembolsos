@@ -2,14 +2,14 @@ import {
   HistoryAction,
   ReimbursementStatus,
   Role,
-  type Prisma,
-  type ReimbursementRequest
+  type Prisma
 } from "@prisma/client";
 import type { Request } from "express";
 
 import { AppError } from "../errors/app-error";
 import { prisma } from "../lib/prisma";
 import {
+  createAttachmentSchema,
   createReimbursementSchema,
   rejectReimbursementSchema,
   reimbursementParamsSchema,
@@ -94,7 +94,15 @@ function getListWhereByRole(user: Express.AuthenticatedUser): Prisma.Reimburseme
   return {};
 }
 
-function canAccessReimbursement(user: Express.AuthenticatedUser, reimbursement: ReimbursementRequest) {
+type ReimbursementAccessData = {
+  requesterId: string;
+  status: ReimbursementStatus;
+};
+
+function canAccessReimbursement(
+  user: Express.AuthenticatedUser,
+  reimbursement: ReimbursementAccessData
+) {
   if (user.role === Role.ADMIN) {
     return true;
   }
@@ -156,6 +164,48 @@ function serializeReimbursement(reimbursement: ReimbursementWithRelations) {
         perfil: entry.user.role
       }
     }))
+  };
+}
+
+function serializeAttachment(attachment: {
+  id: string;
+  fileName: string;
+  fileUrl: string;
+  fileType: string;
+  createdAt: Date;
+}) {
+  return {
+    id: attachment.id,
+    nomeArquivo: attachment.fileName,
+    urlArquivo: attachment.fileUrl,
+    tipoArquivo: attachment.fileType,
+    criadoEm: attachment.createdAt
+  };
+}
+
+function serializeHistoryEntry(entry: {
+  id: string;
+  action: HistoryAction;
+  note: string;
+  createdAt: Date;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    role: Role;
+  };
+}) {
+  return {
+    id: entry.id,
+    acao: entry.action,
+    observacao: entry.note,
+    criadoEm: entry.createdAt,
+    usuario: {
+      id: entry.user.id,
+      nome: entry.user.name,
+      email: entry.user.email,
+      perfil: entry.user.role
+    }
   };
 }
 
@@ -463,4 +513,149 @@ export const cancelReimbursement = asyncHandler(async (request, response) => {
   });
 
   return response.status(200).json(serializeReimbursement(reimbursement));
+});
+
+export const listReimbursementHistory = asyncHandler(async (request, response) => {
+  const user = getAuthenticatedUser(request);
+  const {
+    params: { id }
+  } = reimbursementParamsSchema.parse({
+    params: request.params
+  });
+
+  const reimbursement = await prisma.reimbursementRequest.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      requesterId: true,
+      status: true
+    }
+  });
+
+  if (!reimbursement) {
+    throw new AppError("Reimbursement request not found", 404);
+  }
+
+  if (!canAccessReimbursement(user, reimbursement)) {
+    throw new AppError("User does not have permission to access this resource", 403);
+  }
+
+  const history = await prisma.reimbursementHistory.findMany({
+    where: {
+      requestId: id
+    },
+    orderBy: {
+      createdAt: "asc"
+    },
+    select: {
+      id: true,
+      action: true,
+      note: true,
+      createdAt: true,
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true
+        }
+      }
+    }
+  });
+
+  return response.status(200).json(history.map(serializeHistoryEntry));
+});
+
+export const createAttachment = asyncHandler(async (request, response) => {
+  const user = getAuthenticatedUser(request);
+  const {
+    params: { id },
+    body: { nomeArquivo, tipoArquivo, urlArquivo }
+  } = createAttachmentSchema.parse({
+    params: request.params,
+    body: request.body
+  });
+
+  const reimbursement = await prisma.reimbursementRequest.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      requesterId: true,
+      status: true
+    }
+  });
+
+  if (!reimbursement) {
+    throw new AppError("Reimbursement request not found", 404);
+  }
+
+  if (reimbursement.requesterId !== user.id) {
+    throw new AppError("User does not have permission to access this resource", 403);
+  }
+
+  if (reimbursement.status !== ReimbursementStatus.RASCUNHO) {
+    throw new AppError("Attachments can only be added to draft reimbursement requests", 400);
+  }
+
+  const attachment = await prisma.attachment.create({
+    data: {
+      requestId: id,
+      fileName: nomeArquivo,
+      fileUrl: urlArquivo,
+      fileType: tipoArquivo
+    },
+    select: {
+      id: true,
+      fileName: true,
+      fileUrl: true,
+      fileType: true,
+      createdAt: true
+    }
+  });
+
+  return response.status(201).json(serializeAttachment(attachment));
+});
+
+export const listAttachments = asyncHandler(async (request, response) => {
+  const user = getAuthenticatedUser(request);
+  const {
+    params: { id }
+  } = reimbursementParamsSchema.parse({
+    params: request.params
+  });
+
+  const reimbursement = await prisma.reimbursementRequest.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      requesterId: true,
+      status: true
+    }
+  });
+
+  if (!reimbursement) {
+    throw new AppError("Reimbursement request not found", 404);
+  }
+
+  if (!canAccessReimbursement(user, reimbursement)) {
+    throw new AppError("User does not have permission to access this resource", 403);
+  }
+
+  const attachments = await prisma.attachment.findMany({
+    where: {
+      requestId: id
+    },
+    orderBy: {
+      createdAt: "asc"
+    },
+    select: {
+      id: true,
+      fileName: true,
+      fileUrl: true,
+      fileType: true,
+      createdAt: true
+    }
+  });
+
+  return response.status(200).json(attachments.map(serializeAttachment));
 });

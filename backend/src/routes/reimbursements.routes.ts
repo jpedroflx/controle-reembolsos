@@ -4,8 +4,11 @@ import { Router } from "express";
 import {
   approveReimbursement,
   cancelReimbursement,
+  createAttachment,
   createReimbursement,
   getReimbursementById,
+  listAttachments,
+  listReimbursementHistory,
   listReimbursements,
   payReimbursement,
   rejectReimbursement,
@@ -44,5 +47,13 @@ reimbursementsRouter.post(
   authorizeRoles(Role.COLABORADOR),
   cancelReimbursement
 );
+reimbursementsRouter.get("/:id/history", authenticate, listReimbursementHistory);
+reimbursementsRouter.post(
+  "/:id/attachments",
+  authenticate,
+  authorizeRoles(Role.COLABORADOR),
+  createAttachment
+);
+reimbursementsRouter.get("/:id/attachments", authenticate, listAttachments);
 reimbursementsRouter.get("/:id", authenticate, getReimbursementById);
 reimbursementsRouter.put("/:id", authenticate, authorizeRoles(Role.COLABORADOR), updateReimbursement);
