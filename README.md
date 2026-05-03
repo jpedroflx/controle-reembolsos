@@ -1,6 +1,6 @@
-# Controle de Reembolsos
+# Controle de Solicitações Reembolsos
 
-Aplicação fullstack para controle de solicitações de reembolso, desenvolvida como desafio técnico de estágio.
+Aplicação fullstack para controle de solicitações de reembolso, desenvolvida como desafio técnico do programa de estágio da Pitang.
 
 O sistema permite que colaboradores criem solicitações, gestores aprovem ou rejeitem pedidos, o financeiro realize pagamentos e administradores gerenciem categorias e usuários. A aplicação roda localmente com SQLite.
 
