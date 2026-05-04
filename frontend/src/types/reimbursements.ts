@@ -38,6 +38,26 @@ export type ReimbursementListResponse = {
   meta: ReimbursementListMeta;
 };
 
+export type ReimbursementStatusSummary = {
+  status: ReimbursementStatus;
+  quantidade: number;
+  valorTotal: number;
+};
+
+export type ReimbursementCategorySummary = {
+  categoriaId: string;
+  categoriaNome: string;
+  quantidade: number;
+  valorTotal: number;
+};
+
+export type ReimbursementDashboardSummary = {
+  totalSolicitacoes: number;
+  valorTotal: number;
+  porStatus: ReimbursementStatusSummary[];
+  porCategoria: ReimbursementCategorySummary[];
+};
+
 export type ReimbursementAttachment = {
   id: string;
   nomeArquivo: string;

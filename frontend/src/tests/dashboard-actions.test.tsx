@@ -1,10 +1,14 @@
 import { screen } from "@testing-library/react";
 import type { Mock } from "vitest";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "../api/http";
 import { DashboardPage } from "../pages/DashboardPage";
-import type { ReimbursementStatus, ReimbursementSummary } from "../types/reimbursements";
+import type {
+  ReimbursementDashboardSummary,
+  ReimbursementStatus,
+  ReimbursementSummary
+} from "../types/reimbursements";
 import { createAuthSession, renderWithProviders } from "./test-utils";
 
 vi.mock("../api/http", () => ({
@@ -60,9 +64,74 @@ function makeReimbursementListResponse(reimbursements: ReimbursementSummary[]) {
   };
 }
 
+function makeDashboardSummary(): ReimbursementDashboardSummary {
+  return {
+    porCategoria: [
+      {
+        categoriaId: "cat-alimentacao",
+        categoriaNome: "Alimentacao",
+        quantidade: 2,
+        valorTotal: 150
+      }
+    ],
+    porStatus: [
+      {
+        quantidade: 1,
+        status: "RASCUNHO",
+        valorTotal: 50
+      },
+      {
+        quantidade: 1,
+        status: "ENVIADO",
+        valorTotal: 100
+      },
+      {
+        quantidade: 0,
+        status: "APROVADO",
+        valorTotal: 0
+      },
+      {
+        quantidade: 0,
+        status: "REJEITADO",
+        valorTotal: 0
+      },
+      {
+        quantidade: 0,
+        status: "PAGO",
+        valorTotal: 0
+      },
+      {
+        quantidade: 0,
+        status: "CANCELADO",
+        valorTotal: 0
+      }
+    ],
+    totalSolicitacoes: 2,
+    valorTotal: 150
+  };
+}
+
+function mockDashboardRequests(reimbursements: ReimbursementSummary[]) {
+  mockedApi.get.mockImplementation((url: string) => {
+    if (url === "/reimbursements") {
+      return Promise.resolve(makeReimbursementListResponse(reimbursements));
+    }
+
+    if (url === "/reimbursements/summary") {
+      return Promise.resolve({ data: makeDashboardSummary() });
+    }
+
+    return Promise.reject(new Error(`Unexpected URL: ${url}`));
+  });
+}
+
 describe("DashboardPage role actions", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("shows collaborator actions for draft reimbursements", async () => {
-    mockedApi.get.mockResolvedValueOnce(makeReimbursementListResponse([makeReimbursement("RASCUNHO")]));
+    mockDashboardRequests([makeReimbursement("RASCUNHO")]);
 
     renderWithProviders(<DashboardPage />, {
       route: "/dashboard",
@@ -78,7 +147,7 @@ describe("DashboardPage role actions", () => {
   });
 
   it("shows manager actions for submitted reimbursements", async () => {
-    mockedApi.get.mockResolvedValueOnce(makeReimbursementListResponse([makeReimbursement("ENVIADO")]));
+    mockDashboardRequests([makeReimbursement("ENVIADO")]);
 
     renderWithProviders(<DashboardPage />, {
       route: "/dashboard",
@@ -93,7 +162,7 @@ describe("DashboardPage role actions", () => {
   });
 
   it("shows finance actions for approved reimbursements", async () => {
-    mockedApi.get.mockResolvedValueOnce(makeReimbursementListResponse([makeReimbursement("APROVADO")]));
+    mockDashboardRequests([makeReimbursement("APROVADO")]);
 
     renderWithProviders(<DashboardPage />, {
       route: "/dashboard",
@@ -104,5 +173,21 @@ describe("DashboardPage role actions", () => {
     expect(screen.getByRole("button", { name: "Pagar" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Aprovar" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Enviar" })).not.toBeInTheDocument();
+  });
+
+  it("shows dashboard summary cards", async () => {
+    mockDashboardRequests([makeReimbursement("RASCUNHO")]);
+
+    renderWithProviders(<DashboardPage />, {
+      route: "/dashboard",
+      session: createAuthSession("ADMIN")
+    });
+
+    expect(await screen.findByText("Total de solicitacoes")).toBeInTheDocument();
+    expect(screen.getByText("Valor total")).toBeInTheDocument();
+    expect(screen.getByText("Totais por status")).toBeInTheDocument();
+    expect(screen.getByText("Totais por categoria")).toBeInTheDocument();
+    expect(screen.getAllByText("Alimentacao").length).toBeGreaterThan(0);
+    expect(screen.getAllByText((content) => content.includes("150,00")).length).toBeGreaterThan(0);
   });
 });

@@ -39,7 +39,13 @@ import { EmptyState } from "../components/EmptyState";
 import { PageHeader } from "../components/PageHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { useAuth } from "../contexts/AuthContext";
-import type { ReimbursementListMeta, ReimbursementListResponse, ReimbursementSummary } from "../types/reimbursements";
+import type {
+  ReimbursementCategorySummary,
+  ReimbursementDashboardSummary,
+  ReimbursementListMeta,
+  ReimbursementListResponse,
+  ReimbursementSummary
+} from "../types/reimbursements";
 import { getApiErrorMessage, getApiErrorStatus } from "../utils/apiErrors";
 
 type ReimbursementAction = "submit" | "approve" | "reject" | "pay" | "cancel";
@@ -69,6 +75,24 @@ function getActionKey(reimbursementId: string, action: ReimbursementAction) {
   return `${reimbursementId}:${action}`;
 }
 
+type SummaryCardProps = {
+  label: string;
+  value: string | number;
+};
+
+function SummaryCard({ label, value }: SummaryCardProps) {
+  return (
+    <Box bg="white" border="1px solid" borderColor="gray.200" borderRadius="md" minW="140px" p={4}>
+      <Text color="gray.500" fontSize="sm">
+        {label}
+      </Text>
+      <Text fontSize="2xl" fontWeight="bold">
+        {value}
+      </Text>
+    </Box>
+  );
+}
+
 export function DashboardPage() {
   const { clearSession, userRole } = useAuth();
   const navigate = useNavigate();
@@ -81,6 +105,9 @@ export function DashboardPage() {
     total: 0,
     totalPages: 0
   });
+  const [summary, setSummary] = useState<ReimbursementDashboardSummary | null>(null);
+  const [isSummaryLoading, setIsSummaryLoading] = useState(true);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeActionKey, setActiveActionKey] = useState<string | null>(null);
@@ -89,6 +116,29 @@ export function DashboardPage() {
   const [rejectionError, setRejectionError] = useState<string | null>(null);
 
   const showRequester = userRole !== "COLABORADOR";
+
+  const fetchSummary = useCallback(async () => {
+    setIsSummaryLoading(true);
+    setSummaryError(null);
+
+    try {
+      const response = await api.get<ReimbursementDashboardSummary>("/reimbursements/summary");
+      setSummary(response.data);
+    } catch (caughtError) {
+      if (getApiErrorStatus(caughtError) === 401) {
+        clearSession();
+        navigate("/login", {
+          replace: true,
+          state: { message: "Sessao expirada. Faca login novamente." }
+        });
+        return;
+      }
+
+      setSummaryError(getApiErrorMessage(caughtError, "Nao foi possivel carregar o resumo."));
+    } finally {
+      setIsSummaryLoading(false);
+    }
+  }, [clearSession, navigate]);
 
   const fetchReimbursements = useCallback(async () => {
     setIsLoading(true);
@@ -116,11 +166,12 @@ export function DashboardPage() {
 
   useEffect(() => {
     void fetchReimbursements();
-  }, [fetchReimbursements]);
+    void fetchSummary();
+  }, [fetchReimbursements, fetchSummary]);
 
-  const totalAmount = useMemo(
-    () => reimbursements.reduce((total, reimbursement) => total + reimbursement.valor, 0),
-    [reimbursements]
+  const visibleCategories = useMemo<ReimbursementCategorySummary[]>(
+    () => summary?.porCategoria.slice(0, 6) ?? [],
+    [summary]
   );
 
   function isActionLoading(reimbursementId: string, action: ReimbursementAction) {
@@ -141,6 +192,7 @@ export function DashboardPage() {
         status: "success"
       });
       await fetchReimbursements();
+      void fetchSummary();
     } catch (caughtError) {
       toast({
         description: getApiErrorMessage(caughtError, "Nao foi possivel concluir a acao."),
@@ -304,24 +356,73 @@ export function DashboardPage() {
         }
       />
 
-      <SimpleGrid columns={{ base: 1, sm: 2 }} spacing={4}>
-        <Box bg="white" border="1px solid" borderColor="gray.200" borderRadius="md" minW="180px" p={4}>
-          <Text color="gray.500" fontSize="sm">
-            Total listado
-          </Text>
-          <Text fontSize="2xl" fontWeight="bold">
-            {formatCurrency(totalAmount)}
-          </Text>
-        </Box>
-        <Box bg="white" border="1px solid" borderColor="gray.200" borderRadius="md" minW="140px" p={4}>
-          <Text color="gray.500" fontSize="sm">
-            Perfil
-          </Text>
-          <Text fontSize="2xl" fontWeight="bold">
-            {userRole ?? "-"}
-          </Text>
-        </Box>
-      </SimpleGrid>
+      {isSummaryLoading ? (
+        <Stack spacing={4}>
+          <SimpleGrid columns={{ base: 1, sm: 2, lg: 3 }} spacing={4}>
+            <Skeleton height="96px" />
+            <Skeleton height="96px" />
+            <Skeleton height="96px" />
+          </SimpleGrid>
+          <Skeleton height="132px" />
+        </Stack>
+      ) : null}
+
+      {!isSummaryLoading && summaryError ? (
+        <Alert status="warning">
+          <AlertIcon />
+          {summaryError}
+        </Alert>
+      ) : null}
+
+      {!isSummaryLoading && !summaryError && summary ? (
+        <Stack spacing={4}>
+          <SimpleGrid columns={{ base: 1, sm: 2, lg: 3 }} spacing={4}>
+            <SummaryCard label="Total de solicitacoes" value={summary.totalSolicitacoes} />
+            <SummaryCard label="Valor total" value={formatCurrency(summary.valorTotal)} />
+            <SummaryCard label="Perfil" value={userRole ?? "-"} />
+          </SimpleGrid>
+
+          <Box bg="white" border="1px solid" borderColor="gray.200" borderRadius="md" p={4}>
+            <Text fontWeight="semibold" mb={4}>
+              Totais por status
+            </Text>
+            <SimpleGrid columns={{ base: 1, sm: 2, lg: 3, xl: 6 }} spacing={3}>
+              {summary.porStatus.map((entry) => (
+                <Box key={entry.status} border="1px solid" borderColor="gray.100" borderRadius="md" p={3}>
+                  <StatusBadge status={entry.status} />
+                  <Text fontSize="xl" fontWeight="bold" mt={2}>
+                    {entry.quantidade}
+                  </Text>
+                  <Text color="gray.500" fontSize="sm">
+                    {formatCurrency(entry.valorTotal)}
+                  </Text>
+                </Box>
+              ))}
+            </SimpleGrid>
+          </Box>
+
+          {visibleCategories.length > 0 ? (
+            <Box bg="white" border="1px solid" borderColor="gray.200" borderRadius="md" p={4}>
+              <Text fontWeight="semibold" mb={4}>
+                Totais por categoria
+              </Text>
+              <SimpleGrid columns={{ base: 1, md: 2, xl: 3 }} spacing={3}>
+                {visibleCategories.map((entry) => (
+                  <Box key={entry.categoriaId} border="1px solid" borderColor="gray.100" borderRadius="md" p={3}>
+                    <Text fontWeight="semibold">{entry.categoriaNome}</Text>
+                    <Text color="gray.500" fontSize="sm">
+                      {entry.quantidade} solicitacao{entry.quantidade === 1 ? "" : "es"}
+                    </Text>
+                    <Text fontSize="lg" fontWeight="bold" mt={1}>
+                      {formatCurrency(entry.valorTotal)}
+                    </Text>
+                  </Box>
+                ))}
+              </SimpleGrid>
+            </Box>
+          ) : null}
+        </Stack>
+      ) : null}
 
       {error ? (
         <Alert status="error">
