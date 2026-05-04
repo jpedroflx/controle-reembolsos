@@ -6,6 +6,7 @@ import {
   cancelReimbursement,
   createAttachment,
   createReimbursement,
+  getReimbursementsSummary,
   getReimbursementById,
   listAttachments,
   listReimbursementHistory,
@@ -21,6 +22,7 @@ import { authorizeRoles } from "../middlewares/authorization";
 export const reimbursementsRouter = Router();
 
 reimbursementsRouter.get("/", authenticate, listReimbursements);
+reimbursementsRouter.get("/summary", authenticate, getReimbursementsSummary);
 reimbursementsRouter.post("/", authenticate, authorizeRoles(Role.COLABORADOR), createReimbursement);
 reimbursementsRouter.post(
   "/:id/submit",

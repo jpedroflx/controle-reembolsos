@@ -8,6 +8,12 @@ const reimbursementBodySchema = z.object({
   dataDespesa: z.coerce.date()
 });
 
+const reimbursementFiltersQuerySchema = z.object({
+  status: z.nativeEnum(ReimbursementStatus).optional(),
+  categoriaId: z.string().trim().min(1).optional(),
+  solicitante: z.string().trim().min(1).optional()
+});
+
 export const createReimbursementSchema = z.object({
   body: reimbursementBodySchema
 });
@@ -19,15 +25,16 @@ export const reimbursementParamsSchema = z.object({
 });
 
 export const listReimbursementsSchema = z.object({
-  query: z.object({
+  query: reimbursementFiltersQuerySchema.extend({
     page: z.coerce.number().int().min(1).default(1),
     pageSize: z.coerce.number().int().min(1).max(50).default(10),
-    status: z.nativeEnum(ReimbursementStatus).optional(),
-    categoriaId: z.string().trim().min(1).optional(),
-    solicitante: z.string().trim().min(1).optional(),
     sortBy: z.enum(["criadoEm", "dataDespesa", "valor"]).default("criadoEm"),
     sortOrder: z.enum(["asc", "desc"]).default("desc")
   })
+});
+
+export const reimbursementSummarySchema = z.object({
+  query: reimbursementFiltersQuerySchema
 });
 
 export const updateReimbursementSchema = z.object({
@@ -67,6 +74,7 @@ export const createAttachmentSchema = z.object({
 
 export type CreateReimbursementInput = z.infer<typeof createReimbursementSchema>["body"];
 export type ListReimbursementsInput = z.infer<typeof listReimbursementsSchema>["query"];
+export type ReimbursementSummaryInput = z.infer<typeof reimbursementSummarySchema>["query"];
 export type UpdateReimbursementInput = z.infer<typeof updateReimbursementSchema>["body"];
 export type RejectReimbursementInput = z.infer<typeof rejectReimbursementSchema>["body"];
 export type CreateAttachmentInput = z.infer<typeof createAttachmentSchema>["body"];

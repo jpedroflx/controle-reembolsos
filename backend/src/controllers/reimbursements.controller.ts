@@ -14,6 +14,8 @@ import {
   listReimbursementsSchema,
   rejectReimbursementSchema,
   reimbursementParamsSchema,
+  reimbursementSummarySchema,
+  type ReimbursementSummaryInput,
   updateReimbursementSchema
 } from "../schemas/reimbursements.schemas";
 import { asyncHandler } from "../utils/async-handler";
@@ -93,6 +95,44 @@ function getListWhereByRole(user: Express.AuthenticatedUser): Prisma.Reimburseme
   }
 
   return {};
+}
+
+function getListWhereByRoleAndFilters(
+  user: Express.AuthenticatedUser,
+  { categoriaId, solicitante, status }: ReimbursementSummaryInput
+): Prisma.ReimbursementRequestWhereInput {
+  const whereFilters: Prisma.ReimbursementRequestWhereInput[] = [getListWhereByRole(user)];
+
+  if (status) {
+    whereFilters.push({ status });
+  }
+
+  if (categoriaId) {
+    whereFilters.push({ categoryId: categoriaId });
+  }
+
+  if (solicitante) {
+    whereFilters.push({
+      requester: {
+        OR: [
+          {
+            name: {
+              contains: solicitante
+            }
+          },
+          {
+            email: {
+              contains: solicitante
+            }
+          }
+        ]
+      }
+    });
+  }
+
+  return {
+    AND: whereFilters
+  };
 }
 
 function getListOrderBy(
@@ -225,6 +265,22 @@ function serializeHistoryEntry(entry: {
   };
 }
 
+function toNumber(value: unknown) {
+  return value ? Number(value) : 0;
+}
+
+function getGroupCount(entry: { _count?: true | { id?: number } } | undefined) {
+  if (!entry?._count || entry._count === true) {
+    return 0;
+  }
+
+  return entry._count.id ?? 0;
+}
+
+function getGroupAmount(entry: { _sum?: { amount?: unknown } } | undefined) {
+  return toNumber(entry?._sum?.amount);
+}
+
 async function ensureActiveCategory(categoryId: string) {
   const category = await prisma.category.findUnique({
     where: { id: categoryId },
@@ -316,38 +372,11 @@ export const listReimbursements = asyncHandler(async (request, response) => {
     query: request.query
   });
 
-  const whereFilters: Prisma.ReimbursementRequestWhereInput[] = [getListWhereByRole(user)];
-
-  if (status) {
-    whereFilters.push({ status });
-  }
-
-  if (categoriaId) {
-    whereFilters.push({ categoryId: categoriaId });
-  }
-
-  if (solicitante) {
-    whereFilters.push({
-      requester: {
-        OR: [
-          {
-            name: {
-              contains: solicitante
-            }
-          },
-          {
-            email: {
-              contains: solicitante
-            }
-          }
-        ]
-      }
-    });
-  }
-
-  const where: Prisma.ReimbursementRequestWhereInput = {
-    AND: whereFilters
-  };
+  const where = getListWhereByRoleAndFilters(user, {
+    categoriaId,
+    solicitante,
+    status
+  });
 
   const [total, reimbursements] = await prisma.$transaction([
     prisma.reimbursementRequest.count({
@@ -370,6 +399,92 @@ export const listReimbursements = asyncHandler(async (request, response) => {
       total,
       totalPages: Math.ceil(total / pageSize)
     }
+  });
+});
+
+export const getReimbursementsSummary = asyncHandler(async (request, response) => {
+  const user = getAuthenticatedUser(request);
+  const {
+    query
+  } = reimbursementSummarySchema.parse({
+    query: request.query
+  });
+
+  const where = getListWhereByRoleAndFilters(user, query);
+
+  const [totalSolicitacoes, totalAmount, byStatus, byCategory] = await prisma.$transaction([
+    prisma.reimbursementRequest.count({
+      where
+    }),
+    prisma.reimbursementRequest.aggregate({
+      where,
+      _sum: {
+        amount: true
+      }
+    }),
+    prisma.reimbursementRequest.groupBy({
+      by: ["status"],
+      where,
+      orderBy: {
+        status: "asc"
+      },
+      _count: {
+        id: true
+      },
+      _sum: {
+        amount: true
+      }
+    }),
+    prisma.reimbursementRequest.groupBy({
+      by: ["categoryId"],
+      where,
+      orderBy: {
+        categoryId: "asc"
+      },
+      _count: {
+        id: true
+      },
+      _sum: {
+        amount: true
+      }
+    })
+  ]);
+
+  const categoryIds = byCategory.map((entry) => entry.categoryId);
+  const categories = categoryIds.length
+    ? await prisma.category.findMany({
+        where: {
+          id: {
+            in: categoryIds
+          }
+        },
+        select: {
+          id: true,
+          name: true
+        }
+      })
+    : [];
+  const categoryNameById = new Map(categories.map((category) => [category.id, category.name]));
+  const statusSummaryByStatus = new Map(byStatus.map((entry) => [entry.status, entry]));
+
+  return response.status(200).json({
+    totalSolicitacoes,
+    valorTotal: toNumber(totalAmount._sum.amount),
+    porStatus: Object.values(ReimbursementStatus).map((status) => {
+      const summary = statusSummaryByStatus.get(status);
+
+      return {
+        status,
+        quantidade: getGroupCount(summary),
+        valorTotal: getGroupAmount(summary)
+      };
+    }),
+    porCategoria: byCategory.map((entry) => ({
+      categoriaId: entry.categoryId,
+      categoriaNome: categoryNameById.get(entry.categoryId) ?? "Categoria nao encontrada",
+      quantidade: getGroupCount(entry),
+      valorTotal: getGroupAmount(entry)
+    }))
   });
 });
 

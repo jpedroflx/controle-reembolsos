@@ -274,6 +274,7 @@ Categorias inativas não aparecem como opção para novas solicitações no fron
 | Método | Rota | Perfil | Descrição |
 | --- | --- | --- | --- |
 | GET | `/reimbursements` | Autenticado | Lista solicitações conforme o perfil |
+| GET | `/reimbursements/summary` | Autenticado | Retorna totais de dashboard conforme o perfil |
 | POST | `/reimbursements` | COLABORADOR | Cria solicitação em `RASCUNHO` |
 | GET | `/reimbursements/:id` | Autenticado com acesso | Exibe detalhe da solicitação |
 | PUT | `/reimbursements/:id` | COLABORADOR dono | Edita solicitação em `RASCUNHO` |
@@ -305,6 +306,8 @@ A resposta de `GET /reimbursements` segue o formato:
 ```
 
 Os filtros são combinados com a regra de visibilidade do perfil. Por exemplo, um colaborador continua vendo apenas suas próprias solicitações.
+
+`GET /reimbursements/summary` respeita a mesma visibilidade e aceita os filtros `status`, `categoriaId` e `solicitante`. A resposta contém `totalSolicitacoes`, `valorTotal`, `porStatus` e `porCategoria`.
 
 ```json
 {
