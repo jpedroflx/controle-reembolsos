@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import type { Mock } from "vitest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -189,5 +189,31 @@ describe("DashboardPage role actions", () => {
     expect(screen.getByText("Totais por categoria")).toBeInTheDocument();
     expect(screen.getAllByText("Alimentacao").length).toBeGreaterThan(0);
     expect(screen.getAllByText((content) => content.includes("150,00")).length).toBeGreaterThan(0);
+  });
+
+  it("filters reimbursement list by status", async () => {
+    mockDashboardRequests([makeReimbursement("APROVADO")]);
+
+    renderWithProviders(<DashboardPage />, {
+      route: "/dashboard",
+      session: createAuthSession("ADMIN")
+    });
+
+    await screen.findByText("Almoco em viagem");
+
+    fireEvent.change(screen.getByLabelText("Status"), {
+      target: {
+        value: "APROVADO"
+      }
+    });
+
+    await waitFor(() => {
+      expect(mockedApi.get).toHaveBeenCalledWith("/reimbursements", {
+        params: {
+          page: 1,
+          status: "APROVADO"
+        }
+      });
+    });
   });
 });

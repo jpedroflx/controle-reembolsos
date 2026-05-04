@@ -16,6 +16,7 @@ import {
   ModalFooter,
   ModalHeader,
   ModalOverlay,
+  Select,
   SimpleGrid,
   Skeleton,
   Stack,
@@ -44,11 +45,26 @@ import type {
   ReimbursementDashboardSummary,
   ReimbursementListMeta,
   ReimbursementListResponse,
+  ReimbursementStatus,
   ReimbursementSummary
 } from "../types/reimbursements";
 import { getApiErrorMessage, getApiErrorStatus } from "../utils/apiErrors";
 
 type ReimbursementAction = "submit" | "approve" | "reject" | "pay" | "cancel";
+
+type ReimbursementListFilters = {
+  page: number;
+  status: ReimbursementStatus | "";
+};
+
+const reimbursementStatuses: ReimbursementStatus[] = [
+  "RASCUNHO",
+  "ENVIADO",
+  "APROVADO",
+  "REJEITADO",
+  "PAGO",
+  "CANCELADO"
+];
 
 const actionSuccessMessages: Record<ReimbursementAction, string> = {
   submit: "Solicitacao enviada.",
@@ -73,6 +89,13 @@ function formatDate(value: string) {
 
 function getActionKey(reimbursementId: string, action: ReimbursementAction) {
   return `${reimbursementId}:${action}`;
+}
+
+function getListParams(filters: ReimbursementListFilters) {
+  return {
+    page: filters.page,
+    ...(filters.status ? { status: filters.status } : {})
+  };
 }
 
 type SummaryCardProps = {
@@ -104,6 +127,10 @@ export function DashboardPage() {
     pageSize: 10,
     total: 0,
     totalPages: 0
+  });
+  const [filters, setFilters] = useState<ReimbursementListFilters>({
+    page: 1,
+    status: ""
   });
   const [summary, setSummary] = useState<ReimbursementDashboardSummary | null>(null);
   const [isSummaryLoading, setIsSummaryLoading] = useState(true);
@@ -145,7 +172,9 @@ export function DashboardPage() {
     setError(null);
 
     try {
-      const response = await api.get<ReimbursementListResponse>("/reimbursements");
+      const response = await api.get<ReimbursementListResponse>("/reimbursements", {
+        params: getListParams(filters)
+      });
       setReimbursements(response.data.data);
       setListMeta(response.data.meta);
     } catch (caughtError) {
@@ -162,7 +191,7 @@ export function DashboardPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [clearSession, navigate]);
+  }, [clearSession, filters, navigate]);
 
   useEffect(() => {
     void fetchReimbursements();
@@ -176,6 +205,14 @@ export function DashboardPage() {
 
   function isActionLoading(reimbursementId: string, action: ReimbursementAction) {
     return activeActionKey === getActionKey(reimbursementId, action);
+  }
+
+  function handleStatusFilterChange(status: ReimbursementStatus | "") {
+    setFilters((current) => ({
+      ...current,
+      page: 1,
+      status
+    }));
   }
 
   async function runTransition(
@@ -423,6 +460,24 @@ export function DashboardPage() {
           ) : null}
         </Stack>
       ) : null}
+
+      <Box bg="white" border="1px solid" borderColor="gray.200" borderRadius="md" p={4}>
+        <FormControl maxW={{ base: "full", md: "240px" }}>
+          <FormLabel>Status</FormLabel>
+          <Select
+            focusBorderColor="red.500"
+            value={filters.status}
+            onChange={(event) => handleStatusFilterChange(event.target.value as ReimbursementStatus | "")}
+          >
+            <option value="">Todos</option>
+            {reimbursementStatuses.map((status) => (
+              <option key={status} value={status}>
+                {status}
+              </option>
+            ))}
+          </Select>
+        </FormControl>
+      </Box>
 
       {error ? (
         <Alert status="error">
