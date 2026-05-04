@@ -9,6 +9,7 @@ import {
   FormErrorMessage,
   FormLabel,
   HStack,
+  Input,
   Modal,
   ModalBody,
   ModalCloseButton,
@@ -40,6 +41,7 @@ import { EmptyState } from "../components/EmptyState";
 import { PageHeader } from "../components/PageHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { useAuth } from "../contexts/AuthContext";
+import type { Category } from "../types/categories";
 import type {
   ReimbursementCategorySummary,
   ReimbursementDashboardSummary,
@@ -51,9 +53,16 @@ import type {
 import { getApiErrorMessage, getApiErrorStatus } from "../utils/apiErrors";
 
 type ReimbursementAction = "submit" | "approve" | "reject" | "pay" | "cancel";
+type ReimbursementSortBy = "criadoEm" | "dataDespesa" | "valor";
+type SortOrder = "asc" | "desc";
 
 type ReimbursementListFilters = {
+  categoriaId: string;
   page: number;
+  pageSize: number;
+  solicitante: string;
+  sortBy: ReimbursementSortBy;
+  sortOrder: SortOrder;
   status: ReimbursementStatus | "";
 };
 
@@ -65,6 +74,8 @@ const reimbursementStatuses: ReimbursementStatus[] = [
   "PAGO",
   "CANCELADO"
 ];
+
+const pageSizeOptions = [5, 10, 20, 50];
 
 const actionSuccessMessages: Record<ReimbursementAction, string> = {
   submit: "Solicitacao enviada.",
@@ -91,9 +102,16 @@ function getActionKey(reimbursementId: string, action: ReimbursementAction) {
   return `${reimbursementId}:${action}`;
 }
 
-function getListParams(filters: ReimbursementListFilters) {
+function getListParams(filters: ReimbursementListFilters, canSearchRequester: boolean) {
+  const requesterFilter = canSearchRequester ? filters.solicitante.trim() : "";
+
   return {
     page: filters.page,
+    pageSize: filters.pageSize,
+    sortBy: filters.sortBy,
+    sortOrder: filters.sortOrder,
+    ...(filters.categoriaId ? { categoriaId: filters.categoriaId } : {}),
+    ...(requesterFilter ? { solicitante: requesterFilter } : {}),
     ...(filters.status ? { status: filters.status } : {})
   };
 }
@@ -129,9 +147,17 @@ export function DashboardPage() {
     totalPages: 0
   });
   const [filters, setFilters] = useState<ReimbursementListFilters>({
+    categoriaId: "",
     page: 1,
+    pageSize: 10,
+    solicitante: "",
+    sortBy: "criadoEm",
+    sortOrder: "desc",
     status: ""
   });
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [isCategoriesLoading, setIsCategoriesLoading] = useState(true);
+  const [categoriesError, setCategoriesError] = useState<string | null>(null);
   const [summary, setSummary] = useState<ReimbursementDashboardSummary | null>(null);
   const [isSummaryLoading, setIsSummaryLoading] = useState(true);
   const [summaryError, setSummaryError] = useState<string | null>(null);
@@ -143,6 +169,29 @@ export function DashboardPage() {
   const [rejectionError, setRejectionError] = useState<string | null>(null);
 
   const showRequester = userRole !== "COLABORADOR";
+
+  const fetchCategories = useCallback(async () => {
+    setIsCategoriesLoading(true);
+    setCategoriesError(null);
+
+    try {
+      const response = await api.get<Category[]>("/categories");
+      setCategories(response.data);
+    } catch (caughtError) {
+      if (getApiErrorStatus(caughtError) === 401) {
+        clearSession();
+        navigate("/login", {
+          replace: true,
+          state: { message: "Sessao expirada. Faca login novamente." }
+        });
+        return;
+      }
+
+      setCategoriesError(getApiErrorMessage(caughtError, "Nao foi possivel carregar categorias."));
+    } finally {
+      setIsCategoriesLoading(false);
+    }
+  }, [clearSession, navigate]);
 
   const fetchSummary = useCallback(async () => {
     setIsSummaryLoading(true);
@@ -173,7 +222,7 @@ export function DashboardPage() {
 
     try {
       const response = await api.get<ReimbursementListResponse>("/reimbursements", {
-        params: getListParams(filters)
+        params: getListParams(filters, showRequester)
       });
       setReimbursements(response.data.data);
       setListMeta(response.data.meta);
@@ -191,27 +240,42 @@ export function DashboardPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [clearSession, filters, navigate]);
+  }, [clearSession, filters, navigate, showRequester]);
 
   useEffect(() => {
     void fetchReimbursements();
+  }, [fetchReimbursements]);
+
+  useEffect(() => {
     void fetchSummary();
-  }, [fetchReimbursements, fetchSummary]);
+  }, [fetchSummary]);
+
+  useEffect(() => {
+    void fetchCategories();
+  }, [fetchCategories]);
 
   const visibleCategories = useMemo<ReimbursementCategorySummary[]>(
     () => summary?.porCategoria.slice(0, 6) ?? [],
     [summary]
   );
+  const activeCategories = useMemo(() => categories.filter((category) => category.active), [categories]);
 
   function isActionLoading(reimbursementId: string, action: ReimbursementAction) {
     return activeActionKey === getActionKey(reimbursementId, action);
   }
 
-  function handleStatusFilterChange(status: ReimbursementStatus | "") {
+  function updateListFilters(nextFilters: Partial<Omit<ReimbursementListFilters, "page">>) {
     setFilters((current) => ({
       ...current,
-      page: 1,
-      status
+      ...nextFilters,
+      page: 1
+    }));
+  }
+
+  function updateListPage(page: number) {
+    setFilters((current) => ({
+      ...current,
+      page
     }));
   }
 
@@ -462,21 +526,106 @@ export function DashboardPage() {
       ) : null}
 
       <Box bg="white" border="1px solid" borderColor="gray.200" borderRadius="md" p={4}>
-        <FormControl maxW={{ base: "full", md: "240px" }}>
-          <FormLabel>Status</FormLabel>
-          <Select
-            focusBorderColor="red.500"
-            value={filters.status}
-            onChange={(event) => handleStatusFilterChange(event.target.value as ReimbursementStatus | "")}
-          >
-            <option value="">Todos</option>
-            {reimbursementStatuses.map((status) => (
-              <option key={status} value={status}>
-                {status}
-              </option>
-            ))}
-          </Select>
-        </FormControl>
+        <Stack spacing={4}>
+          <Flex align={{ base: "stretch", md: "center" }} direction={{ base: "column", md: "row" }} gap={2} justify="space-between">
+            <Text fontWeight="semibold">Filtros</Text>
+            <Text color="gray.500" fontSize="sm">
+              {listMeta.total} resultado{listMeta.total === 1 ? "" : "s"}
+            </Text>
+          </Flex>
+
+          <SimpleGrid columns={{ base: 1, md: 2, xl: showRequester ? 6 : 5 }} spacing={4}>
+            <FormControl>
+              <FormLabel>Status</FormLabel>
+              <Select
+                focusBorderColor="red.500"
+                value={filters.status}
+                onChange={(event) => updateListFilters({ status: event.target.value as ReimbursementStatus | "" })}
+              >
+                <option value="">Todos</option>
+                {reimbursementStatuses.map((status) => (
+                  <option key={status} value={status}>
+                    {status}
+                  </option>
+                ))}
+              </Select>
+            </FormControl>
+
+            <FormControl>
+              <FormLabel>Categoria</FormLabel>
+              <Select
+                focusBorderColor="red.500"
+                isDisabled={isCategoriesLoading || Boolean(categoriesError)}
+                value={filters.categoriaId}
+                onChange={(event) => updateListFilters({ categoriaId: event.target.value })}
+              >
+                <option value="">Todas</option>
+                {activeCategories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </Select>
+              {categoriesError ? (
+                <Text color="red.500" fontSize="sm" mt={2}>
+                  {categoriesError}
+                </Text>
+              ) : null}
+            </FormControl>
+
+            {showRequester ? (
+              <FormControl>
+                <FormLabel>Colaborador</FormLabel>
+                <Input
+                  focusBorderColor="red.500"
+                  placeholder="Nome ou email"
+                  value={filters.solicitante}
+                  onChange={(event) => updateListFilters({ solicitante: event.target.value })}
+                />
+              </FormControl>
+            ) : null}
+
+            <FormControl>
+              <FormLabel>Ordenar por</FormLabel>
+              <Select
+                focusBorderColor="red.500"
+                value={filters.sortBy}
+                onChange={(event) => updateListFilters({ sortBy: event.target.value as ReimbursementSortBy })}
+              >
+                <option value="criadoEm">Criacao</option>
+                <option value="dataDespesa">Data da despesa</option>
+                <option value="valor">Valor</option>
+              </Select>
+            </FormControl>
+
+            <FormControl>
+              <FormLabel>Ordem</FormLabel>
+              <Select
+                focusBorderColor="red.500"
+                value={filters.sortOrder}
+                onChange={(event) => updateListFilters({ sortOrder: event.target.value as SortOrder })}
+              >
+                <option value="asc">Crescente</option>
+                <option value="desc">Decrescente</option>
+              </Select>
+            </FormControl>
+
+            <FormControl>
+              <FormLabel>Itens por pagina</FormLabel>
+              <Select
+                focusBorderColor="red.500"
+                value={filters.pageSize}
+                onChange={(event) => updateListFilters({ pageSize: Number(event.target.value) })}
+              >
+                {pageSizeOptions.map((pageSize) => (
+                  <option key={pageSize} value={pageSize}>
+                    {pageSize}
+                  </option>
+                ))}
+              </Select>
+            </FormControl>
+          </SimpleGrid>
+        </Stack>
       </Box>
 
       {error ? (
@@ -514,22 +663,53 @@ export function DashboardPage() {
       ) : null}
 
       {!isLoading && !error && reimbursements.length > 0 ? (
-        <TableContainer bg="white" border="1px solid" borderColor="gray.200" borderRadius="md" boxShadow="sm">
-          <Table size="sm">
-            <Thead bg="gray.50">
-              <Tr>
-                <Th>Solicitacao</Th>
-                <Th>Status</Th>
-                <Th isNumeric>Valor</Th>
-                <Th>Categoria</Th>
-                <Th>Data</Th>
-                {showRequester ? <Th>Solicitante</Th> : null}
-                <Th textAlign="right">Acoes</Th>
-              </Tr>
-            </Thead>
-            <Tbody>{renderRows()}</Tbody>
-          </Table>
-        </TableContainer>
+        <Stack spacing={4}>
+          <TableContainer bg="white" border="1px solid" borderColor="gray.200" borderRadius="md" boxShadow="sm">
+            <Table size="sm">
+              <Thead bg="gray.50">
+                <Tr>
+                  <Th>Solicitacao</Th>
+                  <Th>Status</Th>
+                  <Th isNumeric>Valor</Th>
+                  <Th>Categoria</Th>
+                  <Th>Data</Th>
+                  {showRequester ? <Th>Solicitante</Th> : null}
+                  <Th textAlign="right">Acoes</Th>
+                </Tr>
+              </Thead>
+              <Tbody>{renderRows()}</Tbody>
+            </Table>
+          </TableContainer>
+
+          {listMeta.totalPages > 0 ? (
+            <Flex
+              align={{ base: "stretch", sm: "center" }}
+              direction={{ base: "column", sm: "row" }}
+              gap={3}
+              justify="space-between"
+            >
+              <Text color="gray.600" fontSize="sm">
+                Pagina {listMeta.page} de {listMeta.totalPages}
+              </Text>
+              <ButtonGroup size="sm" spacing={2}>
+                <Button
+                  isDisabled={listMeta.page <= 1}
+                  variant="outline"
+                  onClick={() => updateListPage(Math.max(1, listMeta.page - 1))}
+                >
+                  Anterior
+                </Button>
+                <Button
+                  isDisabled={listMeta.page >= listMeta.totalPages}
+                  variant="outline"
+                  onClick={() => updateListPage(Math.min(listMeta.totalPages, listMeta.page + 1))}
+                >
+                  Proxima
+                </Button>
+              </ButtonGroup>
+            </Flex>
+          ) : null}
+        </Stack>
       ) : null}
 
       <Modal isOpen={rejectModal.isOpen} onClose={rejectModal.onClose}>

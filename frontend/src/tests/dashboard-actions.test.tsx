@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "../api/http";
 import { DashboardPage } from "../pages/DashboardPage";
+import type { Category } from "../types/categories";
 import type {
   ReimbursementDashboardSummary,
   ReimbursementStatus,
@@ -23,6 +24,17 @@ vi.mock("../api/http", () => ({
 const mockedApi = api as unknown as {
   get: Mock;
 };
+
+const categories: Category[] = [
+  {
+    active: true,
+    createdAt: "2026-05-01T00:00:00.000Z",
+    id: "cat-alimentacao",
+    maxAmount: null,
+    name: "Alimentacao",
+    updatedAt: "2026-05-01T00:00:00.000Z"
+  }
+];
 
 function makeReimbursement(status: ReimbursementStatus): ReimbursementSummary {
   return {
@@ -50,15 +62,23 @@ function makeReimbursement(status: ReimbursementStatus): ReimbursementSummary {
   };
 }
 
-function makeReimbursementListResponse(reimbursements: ReimbursementSummary[]) {
+function makeReimbursementListResponse(
+  reimbursements: ReimbursementSummary[],
+  meta: Partial<{
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+  }> = {}
+) {
   return {
     data: {
       data: reimbursements,
       meta: {
-        page: 1,
-        pageSize: 10,
-        total: reimbursements.length,
-        totalPages: reimbursements.length > 0 ? 1 : 0
+        page: meta.page ?? 1,
+        pageSize: meta.pageSize ?? 10,
+        total: meta.total ?? reimbursements.length,
+        totalPages: meta.totalPages ?? (reimbursements.length > 0 ? 1 : 0)
       }
     }
   };
@@ -111,14 +131,21 @@ function makeDashboardSummary(): ReimbursementDashboardSummary {
   };
 }
 
-function mockDashboardRequests(reimbursements: ReimbursementSummary[]) {
+function mockDashboardRequests(
+  reimbursements: ReimbursementSummary[],
+  meta?: Parameters<typeof makeReimbursementListResponse>[1]
+) {
   mockedApi.get.mockImplementation((url: string) => {
     if (url === "/reimbursements") {
-      return Promise.resolve(makeReimbursementListResponse(reimbursements));
+      return Promise.resolve(makeReimbursementListResponse(reimbursements, meta));
     }
 
     if (url === "/reimbursements/summary") {
       return Promise.resolve({ data: makeDashboardSummary() });
+    }
+
+    if (url === "/categories") {
+      return Promise.resolve({ data: categories });
     }
 
     return Promise.reject(new Error(`Unexpected URL: ${url}`));
@@ -191,8 +218,11 @@ describe("DashboardPage role actions", () => {
     expect(screen.getAllByText((content) => content.includes("150,00")).length).toBeGreaterThan(0);
   });
 
-  it("filters reimbursement list by status", async () => {
-    mockDashboardRequests([makeReimbursement("APROVADO")]);
+  it("combines filters, sorting and pagination params", async () => {
+    mockDashboardRequests([makeReimbursement("APROVADO")], {
+      total: 30,
+      totalPages: 3
+    });
 
     renderWithProviders(<DashboardPage />, {
       route: "/dashboard",
@@ -200,20 +230,80 @@ describe("DashboardPage role actions", () => {
     });
 
     await screen.findByText("Almoco em viagem");
+    await screen.findByRole("option", { name: "Alimentacao" });
 
     fireEvent.change(screen.getByLabelText("Status"), {
       target: {
         value: "APROVADO"
       }
     });
+    fireEvent.change(screen.getByLabelText("Categoria"), {
+      target: {
+        value: "cat-alimentacao"
+      }
+    });
+    fireEvent.change(screen.getByLabelText("Colaborador"), {
+      target: {
+        value: "colaborador@teste.com"
+      }
+    });
+    fireEvent.change(screen.getByLabelText("Ordenar por"), {
+      target: {
+        value: "valor"
+      }
+    });
+    fireEvent.change(screen.getByLabelText("Ordem"), {
+      target: {
+        value: "asc"
+      }
+    });
+    fireEvent.change(screen.getByLabelText("Itens por pagina"), {
+      target: {
+        value: "20"
+      }
+    });
 
     await waitFor(() => {
       expect(mockedApi.get).toHaveBeenCalledWith("/reimbursements", {
         params: {
+          categoriaId: "cat-alimentacao",
           page: 1,
+          pageSize: 20,
+          solicitante: "colaborador@teste.com",
+          sortBy: "valor",
+          sortOrder: "asc",
           status: "APROVADO"
         }
       });
     });
+
+    fireEvent.click(screen.getByRole("button", { name: "Proxima" }));
+
+    await waitFor(() => {
+      expect(mockedApi.get).toHaveBeenCalledWith("/reimbursements", {
+        params: {
+          categoriaId: "cat-alimentacao",
+          page: 2,
+          pageSize: 20,
+          solicitante: "colaborador@teste.com",
+          sortBy: "valor",
+          sortOrder: "asc",
+          status: "APROVADO"
+        }
+      });
+    });
+  });
+
+  it("hides requester search for collaborators", async () => {
+    mockDashboardRequests([makeReimbursement("RASCUNHO")]);
+
+    renderWithProviders(<DashboardPage />, {
+      route: "/dashboard",
+      session: createAuthSession("COLABORADOR")
+    });
+
+    await screen.findByText("Almoco em viagem");
+
+    expect(screen.queryByLabelText("Colaborador")).not.toBeInTheDocument();
   });
 });
