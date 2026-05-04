@@ -16,6 +16,7 @@ const friendlyMessages: Record<string, string> = {
   "Invalid email or password": "Email ou senha invalidos.",
   "Invalid reimbursement status transition": "Esta acao nao e permitida para o status atual.",
   "Only draft reimbursement requests can be edited": "Apenas solicitacoes em rascunho podem ser editadas.",
+  "Reimbursement amount exceeds category limit": "O valor excede o limite configurado para a categoria.",
   "Reimbursement request not found": "Solicitacao nao encontrada.",
   "User does not have permission to access this resource": "Voce nao tem permissao para acessar este recurso.",
   "Validation error": "Confira os campos informados."

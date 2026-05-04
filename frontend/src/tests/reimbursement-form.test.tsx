@@ -11,10 +11,20 @@ const categories: Category[] = [
     active: true,
     createdAt: "2026-05-01T00:00:00.000Z",
     id: "cat-transporte",
+    maxAmount: 50,
     name: "Transporte",
     updatedAt: "2026-05-01T00:00:00.000Z"
   }
 ];
+
+function getTodayDateInputValue() {
+  const date = new Date();
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
 
 function getFutureDateInputValue() {
   const date = new Date();
@@ -72,6 +82,31 @@ describe("ReimbursementForm", () => {
     await user.click(screen.getByRole("button", { name: /criar solicitacao/i }));
 
     expect(await screen.findByText("O valor deve ser maior que zero.")).toBeInTheDocument();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it("shows and validates the selected category limit", async () => {
+    const onSubmit = vi.fn();
+    const user = userEvent.setup();
+
+    renderWithProviders(
+      <ReimbursementForm
+        categories={categories}
+        isSubmitting={false}
+        submitLabel="Criar solicitacao"
+        onCancel={vi.fn()}
+        onSubmit={onSubmit}
+      />
+    );
+
+    await user.type(screen.getByLabelText(/descricao/i), "Taxi para cliente");
+    await user.selectOptions(screen.getByLabelText(/categoria/i), "cat-transporte");
+    await user.type(screen.getByLabelText(/valor/i), "60");
+    await user.type(screen.getByLabelText(/data da despesa/i), getTodayDateInputValue());
+    await user.click(screen.getByRole("button", { name: /criar solicitacao/i }));
+
+    expect(screen.getByText(/Limite da categoria:/i)).toBeInTheDocument();
+    expect(await screen.findByText(/O valor excede o limite da categoria/)).toBeInTheDocument();
     expect(onSubmit).not.toHaveBeenCalled();
   });
 

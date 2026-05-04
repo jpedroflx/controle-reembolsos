@@ -20,6 +20,7 @@ const tokens = {} as Record<TestUserKey, string>;
 const userIds = {} as Record<TestUserKey, string>;
 let activeCategoryId: string;
 let inactiveCategoryId: string;
+let limitedCategoryId: string;
 
 async function upsertTestUser(email: string, role: Role) {
   const passwordHash = await bcrypt.hash(testPassword, 10);
@@ -127,23 +128,30 @@ describe("reimbursement business rules", () => {
 
     await cleanupTestRequests();
 
-    const [activeCategory, inactiveCategory] = await Promise.all([
+    const [activeCategory, inactiveCategory, limitedCategory] = await Promise.all([
       prisma.category.upsert({
         where: { name: "Categoria ativa regras" },
-        update: { active: true },
-        create: { name: "Categoria ativa regras", active: true },
+        update: { active: true, maxAmount: null },
+        create: { name: "Categoria ativa regras", active: true, maxAmount: null },
         select: { id: true }
       }),
       prisma.category.upsert({
         where: { name: "Categoria inativa regras" },
-        update: { active: false },
-        create: { name: "Categoria inativa regras", active: false },
+        update: { active: false, maxAmount: null },
+        create: { name: "Categoria inativa regras", active: false, maxAmount: null },
+        select: { id: true }
+      }),
+      prisma.category.upsert({
+        where: { name: "Categoria limitada regras" },
+        update: { active: true, maxAmount: 75 },
+        create: { name: "Categoria limitada regras", active: true, maxAmount: 75 },
         select: { id: true }
       })
     ]);
 
     activeCategoryId = activeCategory.id;
     inactiveCategoryId = inactiveCategory.id;
+    limitedCategoryId = limitedCategory.id;
 
     await Promise.all(
       (Object.keys(testUsers) as TestUserKey[]).map(async (key) => {
@@ -210,6 +218,22 @@ describe("reimbursement business rules", () => {
     expect(response.body).toMatchObject({
       message: "Category not found or inactive",
       statusCode: 400
+    });
+  });
+
+  it("returns 400 when creating a request above the category limit", async () => {
+    const response = await request(app).post("/reimbursements").set(auth(tokens.collaborator)).send({
+      categoriaId: limitedCategoryId,
+      descricao: "Acima do limite",
+      valor: 76,
+      dataDespesa: "2026-05-01"
+    });
+
+    expect(response.status).toBe(400);
+    expect(response.body).toMatchObject({
+      message: "Reimbursement amount exceeds category limit",
+      statusCode: 400,
+      error: "Bad Request"
     });
   });
 
@@ -393,6 +417,27 @@ describe("reimbursement business rules", () => {
     expect(response.status).toBe(400);
     expect(response.body).toMatchObject({
       message: "Expense date cannot be in the future",
+      statusCode: 400,
+      error: "Bad Request"
+    });
+  });
+
+  it("returns 400 when editing a request above the category limit", async () => {
+    const reimbursement = await createDraftRequest(tokens.collaborator, {
+      categoriaId: limitedCategoryId,
+      valor: 50
+    });
+
+    const response = await request(app)
+      .put(`/reimbursements/${reimbursement.id}`)
+      .set(auth(tokens.collaborator))
+      .send({
+        valor: 76
+      });
+
+    expect(response.status).toBe(400);
+    expect(response.body).toMatchObject({
+      message: "Reimbursement amount exceeds category limit",
       statusCode: 400,
       error: "Bad Request"
     });

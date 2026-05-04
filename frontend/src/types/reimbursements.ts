@@ -23,6 +23,7 @@ export type ReimbursementSummary = {
     id: string;
     nome: string;
     ativo: boolean;
+    valorMaximo?: number | null;
   };
 };
 

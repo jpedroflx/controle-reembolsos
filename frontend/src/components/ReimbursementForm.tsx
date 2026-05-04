@@ -6,6 +6,7 @@ import {
   ButtonGroup,
   FormControl,
   FormErrorMessage,
+  FormHelperText,
   FormLabel,
   Input,
   Select,
@@ -48,6 +49,13 @@ function toApiDate(value: string) {
   return new Date(`${value}T00:00:00.000Z`).toISOString();
 }
 
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat("pt-BR", {
+    currency: "BRL",
+    style: "currency"
+  }).format(value);
+}
+
 function getTodayInputValue() {
   const today = new Date();
   const year = today.getFullYear();
@@ -57,9 +65,10 @@ function getTodayInputValue() {
   return `${year}-${month}-${day}`;
 }
 
-function validateForm(values: ReimbursementFormValues) {
+function validateForm(values: ReimbursementFormValues, categories: Category[]) {
   const errors: ReimbursementFormErrors = {};
   const amount = Number(values.valor);
+  const selectedCategory = categories.find((category) => category.id === values.categoriaId);
 
   if (!values.descricao.trim()) {
     errors.descricao = "Informe a descricao.";
@@ -79,6 +88,12 @@ function validateForm(values: ReimbursementFormValues) {
     errors.valor = "Informe o valor.";
   } else if (!Number.isFinite(amount) || amount <= 0) {
     errors.valor = "O valor deve ser maior que zero.";
+  } else if (
+    selectedCategory?.maxAmount !== null &&
+    selectedCategory?.maxAmount !== undefined &&
+    amount > selectedCategory.maxAmount
+  ) {
+    errors.valor = `O valor excede o limite da categoria (${formatCurrency(selectedCategory.maxAmount)}).`;
   }
 
   return errors;
@@ -96,6 +111,7 @@ export function ReimbursementForm({
   const [values, setValues] = useState<ReimbursementFormValues>(initialValues ?? emptyValues);
   const [errors, setErrors] = useState<ReimbursementFormErrors>({});
   const todayInputValue = getTodayInputValue();
+  const selectedCategory = categories.find((category) => category.id === values.categoriaId);
 
   useEffect(() => {
     setValues(initialValues ?? emptyValues);
@@ -105,7 +121,7 @@ export function ReimbursementForm({
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    const nextErrors = validateForm(values);
+    const nextErrors = validateForm(values, categories);
     setErrors(nextErrors);
 
     if (Object.keys(nextErrors).length > 0) {
@@ -156,6 +172,9 @@ export function ReimbursementForm({
                 </option>
               ))}
             </Select>
+            {selectedCategory?.maxAmount !== null && selectedCategory?.maxAmount !== undefined ? (
+              <FormHelperText>Limite da categoria: {formatCurrency(selectedCategory.maxAmount)}</FormHelperText>
+            ) : null}
             <FormErrorMessage>{errors.categoriaId}</FormErrorMessage>
           </FormControl>
 
@@ -164,6 +183,7 @@ export function ReimbursementForm({
             <Input
               focusBorderColor="red.500"
               min="0.01"
+              max={selectedCategory?.maxAmount ?? undefined}
               step="0.01"
               type="number"
               value={values.valor}

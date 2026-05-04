@@ -33,7 +33,8 @@ const reimbursementInclude = {
     select: {
       id: true,
       name: true,
-      active: true
+      active: true,
+      maxAmount: true
     }
   },
   attachments: {
@@ -199,7 +200,8 @@ function serializeReimbursement(reimbursement: ReimbursementWithRelations) {
     categoria: {
       id: reimbursement.category.id,
       nome: reimbursement.category.name,
-      ativo: reimbursement.category.active
+      ativo: reimbursement.category.active,
+      valorMaximo: reimbursement.category.maxAmount === null ? null : Number(reimbursement.category.maxAmount)
     },
     anexos: reimbursement.attachments.map((attachment) => ({
       id: attachment.id,
@@ -286,13 +288,43 @@ async function ensureActiveCategory(categoryId: string) {
     where: { id: categoryId },
     select: {
       id: true,
-      active: true
+      active: true,
+      maxAmount: true
     }
   });
 
   if (!category || !category.active) {
     throw new AppError("Category not found or inactive", 400);
   }
+
+  return category;
+}
+
+function ensureCategoryAmountLimit(maxAmount: unknown, amount: number) {
+  if (maxAmount !== null && maxAmount !== undefined && amount > Number(maxAmount)) {
+    throw new AppError("Reimbursement amount exceeds category limit", 400);
+  }
+}
+
+async function ensureActiveCategoryAllowsAmount(categoryId: string, amount: number) {
+  const category = await ensureActiveCategory(categoryId);
+
+  ensureCategoryAmountLimit(category.maxAmount, amount);
+}
+
+async function ensureExistingCategoryAllowsAmount(categoryId: string, amount: number) {
+  const category = await prisma.category.findUnique({
+    where: { id: categoryId },
+    select: {
+      maxAmount: true
+    }
+  });
+
+  if (!category) {
+    throw new AppError("Category not found or inactive", 400);
+  }
+
+  ensureCategoryAmountLimit(category.maxAmount, amount);
 }
 
 function getUtcDateOnlyTime(date: Date) {
@@ -509,7 +541,7 @@ export const createReimbursement = asyncHandler(async (request, response) => {
   }).body;
 
   ensureExpenseDateIsNotInFuture(dataDespesa);
-  await ensureActiveCategory(categoriaId);
+  await ensureActiveCategoryAllowsAmount(categoriaId, valor);
 
   const reimbursement = await prisma.reimbursementRequest.create({
     data: {
@@ -572,7 +604,9 @@ export const updateReimbursement = asyncHandler(async (request, response) => {
     select: {
       id: true,
       requesterId: true,
-      status: true
+      status: true,
+      categoryId: true,
+      amount: true
     }
   });
 
@@ -590,8 +624,14 @@ export const updateReimbursement = asyncHandler(async (request, response) => {
 
   ensureExpenseDateIsNotInFuture(body.dataDespesa);
 
-  if (body.categoriaId) {
-    await ensureActiveCategory(body.categoriaId);
+  if (body.categoriaId || body.valor !== undefined) {
+    const nextAmount = body.valor ?? Number(reimbursement.amount);
+
+    if (body.categoriaId) {
+      await ensureActiveCategoryAllowsAmount(body.categoriaId, nextAmount);
+    } else {
+      await ensureExistingCategoryAllowsAmount(reimbursement.categoryId, nextAmount);
+    }
   }
 
   const updatedReimbursement = await prisma.$transaction(async (transaction) => {

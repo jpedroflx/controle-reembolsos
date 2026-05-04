@@ -92,13 +92,15 @@ describe("category routes", () => {
     const categoryName = `Categoria teste ${Date.now()}`;
     const response = await request(app).post("/categories").set(auth(adminToken)).send({
       name: categoryName,
-      active: true
+      active: true,
+      maxAmount: 350
     });
 
     expect(response.status).toBe(201);
     expect(response.body).toMatchObject({
       name: categoryName,
-      active: true
+      active: true,
+      maxAmount: 350
     });
   });
 
@@ -119,7 +121,8 @@ describe("category routes", () => {
     const createdCategory = await prisma.category.create({
       data: {
         name: `Categoria para inativar ${Date.now()}`,
-        active: true
+        active: true,
+        maxAmount: 200
       }
     });
 
@@ -127,13 +130,15 @@ describe("category routes", () => {
       .put(`/categories/${createdCategory.id}`)
       .set(auth(adminToken))
       .send({
-        active: false
+        active: false,
+        maxAmount: null
       });
 
     expect(response.status).toBe(200);
     expect(response.body).toMatchObject({
       id: createdCategory.id,
-      active: false
+      active: false,
+      maxAmount: null
     });
   });
 

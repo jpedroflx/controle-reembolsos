@@ -46,6 +46,7 @@ import type { Category } from "../types/categories";
 import { getApiErrorMessage, getApiErrorStatus } from "../utils/apiErrors";
 
 type CategoryFormErrors = {
+  maxAmount?: string;
   name?: string;
 };
 
@@ -56,11 +57,31 @@ function formatDateTime(value: string) {
   }).format(new Date(value));
 }
 
-function validateCategoryName(name: string) {
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat("pt-BR", {
+    currency: "BRL",
+    style: "currency"
+  }).format(value);
+}
+
+function formatMaxAmount(value: number | null) {
+  return value === null ? "Sem limite" : formatCurrency(value);
+}
+
+function parseOptionalAmount(value: string) {
+  return value.trim() ? Number(value) : null;
+}
+
+function validateCategoryForm(name: string, maxAmount: string) {
   const errors: CategoryFormErrors = {};
+  const parsedMaxAmount = parseOptionalAmount(maxAmount);
 
   if (!name.trim()) {
     errors.name = "Informe o nome da categoria.";
+  }
+
+  if (parsedMaxAmount !== null && (!Number.isFinite(parsedMaxAmount) || parsedMaxAmount <= 0)) {
+    errors.maxAmount = "Informe um limite maior que zero ou deixe em branco.";
   }
 
   return errors;
@@ -75,12 +96,14 @@ export function CategoriesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [createName, setCreateName] = useState("");
+  const [createMaxAmount, setCreateMaxAmount] = useState("");
   const [createActive, setCreateActive] = useState(true);
   const [createErrors, setCreateErrors] = useState<CategoryFormErrors>({});
   const [createError, setCreateError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [editName, setEditName] = useState("");
+  const [editMaxAmount, setEditMaxAmount] = useState("");
   const [editActive, setEditActive] = useState(true);
   const [editErrors, setEditErrors] = useState<CategoryFormErrors>({});
   const [editError, setEditError] = useState<string | null>(null);
@@ -127,7 +150,7 @@ export function CategoriesPage() {
     event.preventDefault();
     setCreateError(null);
 
-    const nextErrors = validateCategoryName(createName);
+    const nextErrors = validateCategoryForm(createName, createMaxAmount);
     setCreateErrors(nextErrors);
 
     if (Object.keys(nextErrors).length > 0) {
@@ -139,10 +162,12 @@ export function CategoriesPage() {
     try {
       const response = await api.post<Category>("/categories", {
         active: createActive,
+        maxAmount: parseOptionalAmount(createMaxAmount),
         name: createName.trim()
       });
       setCategories((current) => [...current, response.data].sort((a, b) => a.name.localeCompare(b.name)));
       setCreateName("");
+      setCreateMaxAmount("");
       setCreateActive(true);
       toast({
         description: "Categoria criada com sucesso.",
@@ -158,6 +183,7 @@ export function CategoriesPage() {
   function openEditModal(category: Category) {
     setEditingCategory(category);
     setEditName(category.name);
+    setEditMaxAmount(category.maxAmount === null ? "" : String(category.maxAmount));
     setEditActive(category.active);
     setEditErrors({});
     setEditError(null);
@@ -170,7 +196,7 @@ export function CategoriesPage() {
     }
 
     setEditError(null);
-    const nextErrors = validateCategoryName(editName);
+    const nextErrors = validateCategoryForm(editName, editMaxAmount);
     setEditErrors(nextErrors);
 
     if (Object.keys(nextErrors).length > 0) {
@@ -182,6 +208,7 @@ export function CategoriesPage() {
     try {
       const response = await api.put<Category>(`/categories/${editingCategory.id}`, {
         active: editActive,
+        maxAmount: parseOptionalAmount(editMaxAmount),
         name: editName.trim()
       });
       setCategories((current) =>
@@ -299,6 +326,20 @@ export function CategoriesPage() {
                 <FormErrorMessage>{createErrors.name}</FormErrorMessage>
               </FormControl>
 
+              <FormControl isInvalid={Boolean(createErrors.maxAmount)} maxW={{ base: "full", md: "220px" }}>
+                <FormLabel>Limite</FormLabel>
+                <Input
+                  focusBorderColor="red.500"
+                  min="0.01"
+                  placeholder="Sem limite"
+                  step="0.01"
+                  type="number"
+                  value={createMaxAmount}
+                  onChange={(event) => setCreateMaxAmount(event.target.value)}
+                />
+                <FormErrorMessage>{createErrors.maxAmount}</FormErrorMessage>
+              </FormControl>
+
               <FormControl maxW={{ base: "full", md: "180px" }}>
                 <FormLabel>Status</FormLabel>
                 <Checkbox isChecked={createActive} onChange={(event) => setCreateActive(event.target.checked)}>
@@ -352,6 +393,7 @@ export function CategoriesPage() {
             <Thead bg="gray.50">
               <Tr>
                 <Th>Nome</Th>
+                <Th isNumeric>Limite</Th>
                 <Th>Status</Th>
                 <Th>Criada em</Th>
                 <Th>Atualizada em</Th>
@@ -362,6 +404,7 @@ export function CategoriesPage() {
               {categories.map((category) => (
                 <Tr key={category.id}>
                   <Td fontWeight="semibold">{category.name}</Td>
+                  <Td isNumeric>{formatMaxAmount(category.maxAmount)}</Td>
                   <Td>
                     <HStack>
                       <Switch
@@ -409,6 +452,23 @@ export function CategoriesPage() {
                 <FormLabel>Nome</FormLabel>
                 <Input focusBorderColor="red.500" value={editName} onChange={(event) => setEditName(event.target.value)} />
                 <FormErrorMessage>{editErrors.name}</FormErrorMessage>
+              </FormControl>
+
+              <FormControl isInvalid={Boolean(editErrors.maxAmount)}>
+                <FormLabel>Limite</FormLabel>
+                <Input
+                  focusBorderColor="red.500"
+                  min="0.01"
+                  placeholder="Sem limite"
+                  step="0.01"
+                  type="number"
+                  value={editMaxAmount}
+                  onChange={(event) => setEditMaxAmount(event.target.value)}
+                />
+                <FormErrorMessage>{editErrors.maxAmount}</FormErrorMessage>
+                <Text color="gray.500" fontSize="sm" mt={2}>
+                  Deixe em branco para remover o limite da categoria.
+                </Text>
               </FormControl>
 
               <FormControl>

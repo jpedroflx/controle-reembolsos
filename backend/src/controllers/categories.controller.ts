@@ -1,3 +1,5 @@
+import type { Prisma } from "@prisma/client";
+
 import { AppError } from "../errors/app-error";
 import { prisma } from "../lib/prisma";
 import { createCategorySchema, updateCategorySchema } from "../schemas/categories.schemas";
@@ -7,9 +9,21 @@ const categorySelect = {
   id: true,
   name: true,
   active: true,
+  maxAmount: true,
   createdAt: true,
   updatedAt: true
 } as const;
+
+type CategoryRecord = Prisma.CategoryGetPayload<{
+  select: typeof categorySelect;
+}>;
+
+function serializeCategory(category: CategoryRecord) {
+  return {
+    ...category,
+    maxAmount: category.maxAmount === null ? null : Number(category.maxAmount)
+  };
+}
 
 export const listCategories = asyncHandler(async (_request, response) => {
   const categories = await prisma.category.findMany({
@@ -19,11 +33,11 @@ export const listCategories = asyncHandler(async (_request, response) => {
     select: categorySelect
   });
 
-  return response.status(200).json(categories);
+  return response.status(200).json(categories.map(serializeCategory));
 });
 
 export const createCategory = asyncHandler(async (request, response) => {
-  const { name, active } = createCategorySchema.parse({
+  const { name, active, maxAmount } = createCategorySchema.parse({
     body: request.body
   }).body;
 
@@ -39,12 +53,13 @@ export const createCategory = asyncHandler(async (request, response) => {
   const category = await prisma.category.create({
     data: {
       name,
-      active
+      active,
+      maxAmount
     },
     select: categorySelect
   });
 
-  return response.status(201).json(category);
+  return response.status(201).json(serializeCategory(category));
 });
 
 export const updateCategory = asyncHandler(async (request, response) => {
@@ -87,5 +102,5 @@ export const updateCategory = asyncHandler(async (request, response) => {
     select: categorySelect
   });
 
-  return response.status(200).json(category);
+  return response.status(200).json(serializeCategory(category));
 });

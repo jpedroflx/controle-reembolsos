@@ -27,11 +27,11 @@ const users = [
 ];
 
 const categories = [
-  { name: "Transporte", active: true },
-  { name: "Alimentacao", active: true },
-  { name: "Hospedagem", active: true },
-  { name: "Material de escritorio", active: true },
-  { name: "Categoria inativa exemplo", active: false }
+  { name: "Transporte", active: true, maxAmount: 500 },
+  { name: "Alimentacao", active: true, maxAmount: 120 },
+  { name: "Hospedagem", active: true, maxAmount: 1500 },
+  { name: "Material de escritorio", active: true, maxAmount: null },
+  { name: "Categoria inativa exemplo", active: false, maxAmount: 100 }
 ];
 
 async function main() {
@@ -59,7 +59,8 @@ async function main() {
       prisma.category.upsert({
         where: { name: category.name },
         update: {
-          active: category.active
+          active: category.active,
+          maxAmount: category.maxAmount
         },
         create: category
       })
