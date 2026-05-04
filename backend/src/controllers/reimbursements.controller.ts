@@ -34,7 +34,8 @@ const reimbursementInclude = {
       id: true,
       name: true,
       active: true,
-      maxAmount: true
+      maxAmount: true,
+      attachmentRequiredAboveAmount: true
     }
   },
   attachments: {
@@ -201,7 +202,11 @@ function serializeReimbursement(reimbursement: ReimbursementWithRelations) {
       id: reimbursement.category.id,
       nome: reimbursement.category.name,
       ativo: reimbursement.category.active,
-      valorMaximo: reimbursement.category.maxAmount === null ? null : Number(reimbursement.category.maxAmount)
+      valorMaximo: reimbursement.category.maxAmount === null ? null : Number(reimbursement.category.maxAmount),
+      anexoObrigatorioAcimaDe:
+        reimbursement.category.attachmentRequiredAboveAmount === null
+          ? null
+          : Number(reimbursement.category.attachmentRequiredAboveAmount)
     },
     anexos: reimbursement.attachments.map((attachment) => ({
       id: attachment.id,
@@ -338,6 +343,52 @@ function ensureExpenseDateIsNotInFuture(expenseDate: Date | undefined) {
 
   if (getUtcDateOnlyTime(expenseDate) > getUtcDateOnlyTime(new Date())) {
     throw new AppError("Expense date cannot be in the future", 400);
+  }
+}
+
+async function ensureRequiredAttachmentBeforeSubmit(request: Request, reimbursementId: string) {
+  const user = getAuthenticatedUser(request);
+
+  const reimbursement = await prisma.reimbursementRequest.findUnique({
+    where: { id: reimbursementId },
+    select: {
+      id: true,
+      requesterId: true,
+      status: true,
+      amount: true,
+      category: {
+        select: {
+          attachmentRequiredAboveAmount: true
+        }
+      },
+      _count: {
+        select: {
+          attachments: true
+        }
+      }
+    }
+  });
+
+  if (!reimbursement) {
+    throw new AppError("Reimbursement request not found", 404);
+  }
+
+  if (reimbursement.requesterId !== user.id) {
+    throw new AppError("User does not have permission to access this resource", 403);
+  }
+
+  if (reimbursement.status !== ReimbursementStatus.RASCUNHO) {
+    throw new AppError("Invalid reimbursement status transition", 400);
+  }
+
+  const requiredAboveAmount = reimbursement.category.attachmentRequiredAboveAmount;
+
+  if (
+    requiredAboveAmount !== null &&
+    Number(reimbursement.amount) > Number(requiredAboveAmount) &&
+    reimbursement._count.attachments === 0
+  ) {
+    throw new AppError("Attachment is required to submit reimbursements above category threshold", 400);
   }
 }
 
@@ -669,6 +720,8 @@ export const submitReimbursement = asyncHandler(async (request, response) => {
   } = reimbursementParamsSchema.parse({
     params: request.params
   });
+
+  await ensureRequiredAttachmentBeforeSubmit(request, id);
 
   const reimbursement = await transitionReimbursement(request, id, {
     action: HistoryAction.SUBMITTED,

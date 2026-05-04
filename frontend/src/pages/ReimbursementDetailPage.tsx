@@ -211,6 +211,14 @@ export function ReimbursementDetailPage() {
 
     return [];
   }, [canEditDraft, reimbursement, userRole]);
+  const attachmentRequiredAboveAmount = reimbursement?.categoria.anexoObrigatorioAcimaDe ?? null;
+  const isAttachmentMissingForSubmit = Boolean(
+    canEditDraft &&
+      reimbursement &&
+      attachmentRequiredAboveAmount !== null &&
+      reimbursement.valor > attachmentRequiredAboveAmount &&
+      reimbursement.anexos.length === 0
+  );
 
   function isActionLoading(action: ReimbursementAction) {
     if (!reimbursement) {
@@ -402,6 +410,14 @@ export function ReimbursementDetailPage() {
 
       {!isLoading && !loadError && reimbursement ? (
         <>
+          {isAttachmentMissingForSubmit && attachmentRequiredAboveAmount !== null ? (
+            <Alert status="warning">
+              <AlertIcon />
+              Adicione pelo menos um anexo antes de enviar. Esta categoria exige anexo para valores acima de{" "}
+              {formatCurrency(attachmentRequiredAboveAmount)}.
+            </Alert>
+          ) : null}
+
           <Grid gap={4} templateColumns={{ base: "1fr", md: "repeat(4, 1fr)" }}>
             <GridItem>
               <Stat bg="white" border="1px solid" borderColor="gray.200" borderRadius="md" boxShadow="sm" p={4}>

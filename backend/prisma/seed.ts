@@ -27,11 +27,11 @@ const users = [
 ];
 
 const categories = [
-  { name: "Transporte", active: true, maxAmount: 500 },
-  { name: "Alimentacao", active: true, maxAmount: 120 },
-  { name: "Hospedagem", active: true, maxAmount: 1500 },
-  { name: "Material de escritorio", active: true, maxAmount: null },
-  { name: "Categoria inativa exemplo", active: false, maxAmount: 100 }
+  { name: "Transporte", active: true, maxAmount: 500, attachmentRequiredAboveAmount: 300 },
+  { name: "Alimentacao", active: true, maxAmount: 120, attachmentRequiredAboveAmount: null },
+  { name: "Hospedagem", active: true, maxAmount: 1500, attachmentRequiredAboveAmount: 800 },
+  { name: "Material de escritorio", active: true, maxAmount: null, attachmentRequiredAboveAmount: null },
+  { name: "Categoria inativa exemplo", active: false, maxAmount: 100, attachmentRequiredAboveAmount: 50 }
 ];
 
 async function main() {
@@ -60,6 +60,7 @@ async function main() {
         where: { name: category.name },
         update: {
           active: category.active,
+          attachmentRequiredAboveAmount: category.attachmentRequiredAboveAmount,
           maxAmount: category.maxAmount
         },
         create: category

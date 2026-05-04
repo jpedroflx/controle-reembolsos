@@ -21,6 +21,7 @@ const userIds = {} as Record<TestUserKey, string>;
 let activeCategoryId: string;
 let inactiveCategoryId: string;
 let limitedCategoryId: string;
+let attachmentRequiredCategoryId: string;
 
 async function upsertTestUser(email: string, role: Role) {
   const passwordHash = await bcrypt.hash(testPassword, 10);
@@ -78,6 +79,17 @@ function getFutureExpenseDate() {
   return date.toISOString().slice(0, 10);
 }
 
+function addSimulatedAttachment(reimbursementId: string) {
+  return request(app)
+    .post(`/reimbursements/${reimbursementId}/attachments`)
+    .set(auth(tokens.collaborator))
+    .send({
+      nomeArquivo: "comprovante.pdf",
+      tipoArquivo: "PDF",
+      urlArquivo: "https://example.com/comprovante.pdf"
+    });
+}
+
 async function createDraftRequest(
   token = tokens.collaborator,
   data: Partial<{
@@ -128,23 +140,29 @@ describe("reimbursement business rules", () => {
 
     await cleanupTestRequests();
 
-    const [activeCategory, inactiveCategory, limitedCategory] = await Promise.all([
+    const [activeCategory, inactiveCategory, limitedCategory, attachmentRequiredCategory] = await Promise.all([
       prisma.category.upsert({
         where: { name: "Categoria ativa regras" },
-        update: { active: true, maxAmount: null },
-        create: { name: "Categoria ativa regras", active: true, maxAmount: null },
+        update: { active: true, attachmentRequiredAboveAmount: null, maxAmount: null },
+        create: { name: "Categoria ativa regras", active: true, attachmentRequiredAboveAmount: null, maxAmount: null },
         select: { id: true }
       }),
       prisma.category.upsert({
         where: { name: "Categoria inativa regras" },
-        update: { active: false, maxAmount: null },
-        create: { name: "Categoria inativa regras", active: false, maxAmount: null },
+        update: { active: false, attachmentRequiredAboveAmount: null, maxAmount: null },
+        create: { name: "Categoria inativa regras", active: false, attachmentRequiredAboveAmount: null, maxAmount: null },
         select: { id: true }
       }),
       prisma.category.upsert({
         where: { name: "Categoria limitada regras" },
-        update: { active: true, maxAmount: 75 },
-        create: { name: "Categoria limitada regras", active: true, maxAmount: 75 },
+        update: { active: true, attachmentRequiredAboveAmount: null, maxAmount: 75 },
+        create: { name: "Categoria limitada regras", active: true, attachmentRequiredAboveAmount: null, maxAmount: 75 },
+        select: { id: true }
+      }),
+      prisma.category.upsert({
+        where: { name: "Categoria exige anexo regras" },
+        update: { active: true, attachmentRequiredAboveAmount: 100, maxAmount: null },
+        create: { name: "Categoria exige anexo regras", active: true, attachmentRequiredAboveAmount: 100, maxAmount: null },
         select: { id: true }
       })
     ]);
@@ -152,6 +170,7 @@ describe("reimbursement business rules", () => {
     activeCategoryId = activeCategory.id;
     inactiveCategoryId = inactiveCategory.id;
     limitedCategoryId = limitedCategory.id;
+    attachmentRequiredCategoryId = attachmentRequiredCategory.id;
 
     await Promise.all(
       (Object.keys(testUsers) as TestUserKey[]).map(async (key) => {
@@ -234,6 +253,17 @@ describe("reimbursement business rules", () => {
       message: "Reimbursement amount exceeds category limit",
       statusCode: 400,
       error: "Bad Request"
+    });
+  });
+
+  it("allows creating a draft request above the attachment threshold without an attachment", async () => {
+    const reimbursement = await createDraftRequest(tokens.collaborator, {
+      categoriaId: attachmentRequiredCategoryId,
+      valor: 150
+    });
+
+    expect(reimbursement).toMatchObject({
+      status: ReimbursementStatus.RASCUNHO
     });
   });
 
@@ -464,6 +494,41 @@ describe("reimbursement business rules", () => {
 
   it("submits a draft request and writes history", async () => {
     const reimbursement = await createDraftRequest();
+
+    const response = await request(app)
+      .post(`/reimbursements/${reimbursement.id}/submit`)
+      .set(auth(tokens.collaborator));
+
+    expect(response.status).toBe(200);
+    expect(response.body.status).toBe(ReimbursementStatus.ENVIADO);
+    expect(response.body.historico.at(-1)?.acao).toBe("SUBMITTED");
+  });
+
+  it("returns 400 when submitting a request that requires an attachment by amount", async () => {
+    const reimbursement = await createDraftRequest(tokens.collaborator, {
+      categoriaId: attachmentRequiredCategoryId,
+      valor: 150
+    });
+
+    const response = await request(app)
+      .post(`/reimbursements/${reimbursement.id}/submit`)
+      .set(auth(tokens.collaborator));
+
+    expect(response.status).toBe(400);
+    expect(response.body).toMatchObject({
+      message: "Attachment is required to submit reimbursements above category threshold",
+      statusCode: 400,
+      error: "Bad Request"
+    });
+  });
+
+  it("submits a request above the attachment threshold after adding an attachment", async () => {
+    const reimbursement = await createDraftRequest(tokens.collaborator, {
+      categoriaId: attachmentRequiredCategoryId,
+      valor: 150
+    });
+
+    await addSimulatedAttachment(reimbursement.id).expect(201);
 
     const response = await request(app)
       .post(`/reimbursements/${reimbursement.id}/submit`)

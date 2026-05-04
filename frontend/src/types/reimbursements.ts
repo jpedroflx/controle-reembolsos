@@ -24,6 +24,7 @@ export type ReimbursementSummary = {
     nome: string;
     ativo: boolean;
     valorMaximo?: number | null;
+    anexoObrigatorioAcimaDe?: number | null;
   };
 };
 

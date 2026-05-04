@@ -9,6 +9,8 @@ type ApiErrorBody = {
 const friendlyMessages: Record<string, string> = {
   "Attachments can only be added to draft reimbursement requests":
     "Anexos so podem ser adicionados em solicitacoes em rascunho.",
+  "Attachment is required to submit reimbursements above category threshold":
+    "Adicione pelo menos um anexo antes de enviar esta solicitacao.",
   "Category name is already in use": "Ja existe uma categoria com esse nome.",
   "Category not found": "Categoria nao encontrada.",
   "Category not found or inactive": "Categoria nao encontrada ou inativa.",

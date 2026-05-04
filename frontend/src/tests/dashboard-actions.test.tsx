@@ -30,6 +30,7 @@ const categories: Category[] = [
     active: true,
     createdAt: "2026-05-01T00:00:00.000Z",
     id: "cat-alimentacao",
+    attachmentRequiredAboveAmount: null,
     maxAmount: null,
     name: "Alimentacao",
     updatedAt: "2026-05-01T00:00:00.000Z"

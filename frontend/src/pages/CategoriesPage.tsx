@@ -46,6 +46,7 @@ import type { Category } from "../types/categories";
 import { getApiErrorMessage, getApiErrorStatus } from "../utils/apiErrors";
 
 type CategoryFormErrors = {
+  attachmentRequiredAboveAmount?: string;
   maxAmount?: string;
   name?: string;
 };
@@ -68,13 +69,18 @@ function formatMaxAmount(value: number | null) {
   return value === null ? "Sem limite" : formatCurrency(value);
 }
 
+function formatAttachmentRequirement(value: number | null) {
+  return value === null ? "Nao exige" : formatCurrency(value);
+}
+
 function parseOptionalAmount(value: string) {
   return value.trim() ? Number(value) : null;
 }
 
-function validateCategoryForm(name: string, maxAmount: string) {
+function validateCategoryForm(name: string, maxAmount: string, attachmentRequiredAboveAmount: string) {
   const errors: CategoryFormErrors = {};
   const parsedMaxAmount = parseOptionalAmount(maxAmount);
+  const parsedAttachmentRequiredAboveAmount = parseOptionalAmount(attachmentRequiredAboveAmount);
 
   if (!name.trim()) {
     errors.name = "Informe o nome da categoria.";
@@ -82,6 +88,13 @@ function validateCategoryForm(name: string, maxAmount: string) {
 
   if (parsedMaxAmount !== null && (!Number.isFinite(parsedMaxAmount) || parsedMaxAmount <= 0)) {
     errors.maxAmount = "Informe um limite maior que zero ou deixe em branco.";
+  }
+
+  if (
+    parsedAttachmentRequiredAboveAmount !== null &&
+    (!Number.isFinite(parsedAttachmentRequiredAboveAmount) || parsedAttachmentRequiredAboveAmount <= 0)
+  ) {
+    errors.attachmentRequiredAboveAmount = "Informe um valor maior que zero ou deixe em branco.";
   }
 
   return errors;
@@ -97,6 +110,7 @@ export function CategoriesPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [createName, setCreateName] = useState("");
   const [createMaxAmount, setCreateMaxAmount] = useState("");
+  const [createAttachmentRequiredAboveAmount, setCreateAttachmentRequiredAboveAmount] = useState("");
   const [createActive, setCreateActive] = useState(true);
   const [createErrors, setCreateErrors] = useState<CategoryFormErrors>({});
   const [createError, setCreateError] = useState<string | null>(null);
@@ -104,6 +118,7 @@ export function CategoriesPage() {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [editName, setEditName] = useState("");
   const [editMaxAmount, setEditMaxAmount] = useState("");
+  const [editAttachmentRequiredAboveAmount, setEditAttachmentRequiredAboveAmount] = useState("");
   const [editActive, setEditActive] = useState(true);
   const [editErrors, setEditErrors] = useState<CategoryFormErrors>({});
   const [editError, setEditError] = useState<string | null>(null);
@@ -150,7 +165,7 @@ export function CategoriesPage() {
     event.preventDefault();
     setCreateError(null);
 
-    const nextErrors = validateCategoryForm(createName, createMaxAmount);
+    const nextErrors = validateCategoryForm(createName, createMaxAmount, createAttachmentRequiredAboveAmount);
     setCreateErrors(nextErrors);
 
     if (Object.keys(nextErrors).length > 0) {
@@ -162,12 +177,14 @@ export function CategoriesPage() {
     try {
       const response = await api.post<Category>("/categories", {
         active: createActive,
+        attachmentRequiredAboveAmount: parseOptionalAmount(createAttachmentRequiredAboveAmount),
         maxAmount: parseOptionalAmount(createMaxAmount),
         name: createName.trim()
       });
       setCategories((current) => [...current, response.data].sort((a, b) => a.name.localeCompare(b.name)));
       setCreateName("");
       setCreateMaxAmount("");
+      setCreateAttachmentRequiredAboveAmount("");
       setCreateActive(true);
       toast({
         description: "Categoria criada com sucesso.",
@@ -184,6 +201,9 @@ export function CategoriesPage() {
     setEditingCategory(category);
     setEditName(category.name);
     setEditMaxAmount(category.maxAmount === null ? "" : String(category.maxAmount));
+    setEditAttachmentRequiredAboveAmount(
+      category.attachmentRequiredAboveAmount === null ? "" : String(category.attachmentRequiredAboveAmount)
+    );
     setEditActive(category.active);
     setEditErrors({});
     setEditError(null);
@@ -196,7 +216,7 @@ export function CategoriesPage() {
     }
 
     setEditError(null);
-    const nextErrors = validateCategoryForm(editName, editMaxAmount);
+    const nextErrors = validateCategoryForm(editName, editMaxAmount, editAttachmentRequiredAboveAmount);
     setEditErrors(nextErrors);
 
     if (Object.keys(nextErrors).length > 0) {
@@ -208,6 +228,7 @@ export function CategoriesPage() {
     try {
       const response = await api.put<Category>(`/categories/${editingCategory.id}`, {
         active: editActive,
+        attachmentRequiredAboveAmount: parseOptionalAmount(editAttachmentRequiredAboveAmount),
         maxAmount: parseOptionalAmount(editMaxAmount),
         name: editName.trim()
       });
@@ -340,6 +361,23 @@ export function CategoriesPage() {
                 <FormErrorMessage>{createErrors.maxAmount}</FormErrorMessage>
               </FormControl>
 
+              <FormControl
+                isInvalid={Boolean(createErrors.attachmentRequiredAboveAmount)}
+                maxW={{ base: "full", md: "240px" }}
+              >
+                <FormLabel>Anexo acima de</FormLabel>
+                <Input
+                  focusBorderColor="red.500"
+                  min="0.01"
+                  placeholder="Nao exige"
+                  step="0.01"
+                  type="number"
+                  value={createAttachmentRequiredAboveAmount}
+                  onChange={(event) => setCreateAttachmentRequiredAboveAmount(event.target.value)}
+                />
+                <FormErrorMessage>{createErrors.attachmentRequiredAboveAmount}</FormErrorMessage>
+              </FormControl>
+
               <FormControl maxW={{ base: "full", md: "180px" }}>
                 <FormLabel>Status</FormLabel>
                 <Checkbox isChecked={createActive} onChange={(event) => setCreateActive(event.target.checked)}>
@@ -394,6 +432,7 @@ export function CategoriesPage() {
               <Tr>
                 <Th>Nome</Th>
                 <Th isNumeric>Limite</Th>
+                <Th isNumeric>Anexo acima de</Th>
                 <Th>Status</Th>
                 <Th>Criada em</Th>
                 <Th>Atualizada em</Th>
@@ -405,6 +444,7 @@ export function CategoriesPage() {
                 <Tr key={category.id}>
                   <Td fontWeight="semibold">{category.name}</Td>
                   <Td isNumeric>{formatMaxAmount(category.maxAmount)}</Td>
+                  <Td isNumeric>{formatAttachmentRequirement(category.attachmentRequiredAboveAmount)}</Td>
                   <Td>
                     <HStack>
                       <Switch
@@ -468,6 +508,23 @@ export function CategoriesPage() {
                 <FormErrorMessage>{editErrors.maxAmount}</FormErrorMessage>
                 <Text color="gray.500" fontSize="sm" mt={2}>
                   Deixe em branco para remover o limite da categoria.
+                </Text>
+              </FormControl>
+
+              <FormControl isInvalid={Boolean(editErrors.attachmentRequiredAboveAmount)}>
+                <FormLabel>Anexo acima de</FormLabel>
+                <Input
+                  focusBorderColor="red.500"
+                  min="0.01"
+                  placeholder="Nao exige"
+                  step="0.01"
+                  type="number"
+                  value={editAttachmentRequiredAboveAmount}
+                  onChange={(event) => setEditAttachmentRequiredAboveAmount(event.target.value)}
+                />
+                <FormErrorMessage>{editErrors.attachmentRequiredAboveAmount}</FormErrorMessage>
+                <Text color="gray.500" fontSize="sm" mt={2}>
+                  Deixe em branco para nao exigir anexo por valor.
                 </Text>
               </FormControl>
 

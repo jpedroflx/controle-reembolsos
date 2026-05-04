@@ -11,6 +11,7 @@ const categories: Category[] = [
     active: true,
     createdAt: "2026-05-01T00:00:00.000Z",
     id: "cat-transporte",
+    attachmentRequiredAboveAmount: null,
     maxAmount: 50,
     name: "Transporte",
     updatedAt: "2026-05-01T00:00:00.000Z"

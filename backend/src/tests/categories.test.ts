@@ -93,6 +93,7 @@ describe("category routes", () => {
     const response = await request(app).post("/categories").set(auth(adminToken)).send({
       name: categoryName,
       active: true,
+      attachmentRequiredAboveAmount: 250,
       maxAmount: 350
     });
 
@@ -100,6 +101,7 @@ describe("category routes", () => {
     expect(response.body).toMatchObject({
       name: categoryName,
       active: true,
+      attachmentRequiredAboveAmount: 250,
       maxAmount: 350
     });
   });
@@ -122,6 +124,7 @@ describe("category routes", () => {
       data: {
         name: `Categoria para inativar ${Date.now()}`,
         active: true,
+        attachmentRequiredAboveAmount: 150,
         maxAmount: 200
       }
     });
@@ -131,6 +134,7 @@ describe("category routes", () => {
       .set(auth(adminToken))
       .send({
         active: false,
+        attachmentRequiredAboveAmount: null,
         maxAmount: null
       });
 
@@ -138,6 +142,7 @@ describe("category routes", () => {
     expect(response.body).toMatchObject({
       id: createdCategory.id,
       active: false,
+      attachmentRequiredAboveAmount: null,
       maxAmount: null
     });
   });

@@ -10,6 +10,7 @@ const categorySelect = {
   name: true,
   active: true,
   maxAmount: true,
+  attachmentRequiredAboveAmount: true,
   createdAt: true,
   updatedAt: true
 } as const;
@@ -21,6 +22,8 @@ type CategoryRecord = Prisma.CategoryGetPayload<{
 function serializeCategory(category: CategoryRecord) {
   return {
     ...category,
+    attachmentRequiredAboveAmount:
+      category.attachmentRequiredAboveAmount === null ? null : Number(category.attachmentRequiredAboveAmount),
     maxAmount: category.maxAmount === null ? null : Number(category.maxAmount)
   };
 }
@@ -37,7 +40,7 @@ export const listCategories = asyncHandler(async (_request, response) => {
 });
 
 export const createCategory = asyncHandler(async (request, response) => {
-  const { name, active, maxAmount } = createCategorySchema.parse({
+  const { name, active, attachmentRequiredAboveAmount, maxAmount } = createCategorySchema.parse({
     body: request.body
   }).body;
 
@@ -54,6 +57,7 @@ export const createCategory = asyncHandler(async (request, response) => {
     data: {
       name,
       active,
+      attachmentRequiredAboveAmount,
       maxAmount
     },
     select: categorySelect
