@@ -12,6 +12,7 @@ const friendlyMessages: Record<string, string> = {
   "Category name is already in use": "Ja existe uma categoria com esse nome.",
   "Category not found": "Categoria nao encontrada.",
   "Category not found or inactive": "Categoria nao encontrada ou inativa.",
+  "Expense date cannot be in the future": "A data da despesa nao pode ser futura.",
   "Invalid email or password": "Email ou senha invalidos.",
   "Invalid reimbursement status transition": "Esta acao nao e permitida para o status atual.",
   "Only draft reimbursement requests can be edited": "Apenas solicitacoes em rascunho podem ser editadas.",

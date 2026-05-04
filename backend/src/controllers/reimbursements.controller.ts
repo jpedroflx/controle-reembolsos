@@ -295,6 +295,20 @@ async function ensureActiveCategory(categoryId: string) {
   }
 }
 
+function getUtcDateOnlyTime(date: Date) {
+  return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+}
+
+function ensureExpenseDateIsNotInFuture(expenseDate: Date | undefined) {
+  if (!expenseDate) {
+    return;
+  }
+
+  if (getUtcDateOnlyTime(expenseDate) > getUtcDateOnlyTime(new Date())) {
+    throw new AppError("Expense date cannot be in the future", 400);
+  }
+}
+
 type TransitionOptions = {
   action: HistoryAction;
   expectedStatus: ReimbursementStatus;
@@ -494,6 +508,7 @@ export const createReimbursement = asyncHandler(async (request, response) => {
     body: request.body
   }).body;
 
+  ensureExpenseDateIsNotInFuture(dataDespesa);
   await ensureActiveCategory(categoriaId);
 
   const reimbursement = await prisma.reimbursementRequest.create({
@@ -572,6 +587,8 @@ export const updateReimbursement = asyncHandler(async (request, response) => {
   if (reimbursement.status !== ReimbursementStatus.RASCUNHO) {
     throw new AppError("Only draft reimbursement requests can be edited", 400);
   }
+
+  ensureExpenseDateIsNotInFuture(body.dataDespesa);
 
   if (body.categoriaId) {
     await ensureActiveCategory(body.categoriaId);

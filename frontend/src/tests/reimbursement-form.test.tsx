@@ -16,6 +16,17 @@ const categories: Category[] = [
   }
 ];
 
+function getFutureDateInputValue() {
+  const date = new Date();
+  date.setDate(date.getDate() + 1);
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
 describe("ReimbursementForm", () => {
   it("validates required fields", async () => {
     const onSubmit = vi.fn();
@@ -61,6 +72,30 @@ describe("ReimbursementForm", () => {
     await user.click(screen.getByRole("button", { name: /criar solicitacao/i }));
 
     expect(await screen.findByText("O valor deve ser maior que zero.")).toBeInTheDocument();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it("blocks future expense dates", async () => {
+    const onSubmit = vi.fn();
+    const user = userEvent.setup();
+
+    renderWithProviders(
+      <ReimbursementForm
+        categories={categories}
+        isSubmitting={false}
+        submitLabel="Criar solicitacao"
+        onCancel={vi.fn()}
+        onSubmit={onSubmit}
+      />
+    );
+
+    await user.type(screen.getByLabelText(/descricao/i), "Taxi para cliente");
+    await user.selectOptions(screen.getByLabelText(/categoria/i), "cat-transporte");
+    await user.type(screen.getByLabelText(/valor/i), "25");
+    await user.type(screen.getByLabelText(/data da despesa/i), getFutureDateInputValue());
+    await user.click(screen.getByRole("button", { name: /criar solicitacao/i }));
+
+    expect(await screen.findByText("A data da despesa nao pode ser futura.")).toBeInTheDocument();
     expect(onSubmit).not.toHaveBeenCalled();
   });
 });

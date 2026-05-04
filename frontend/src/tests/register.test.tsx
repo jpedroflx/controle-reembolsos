@@ -1,5 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import type { Mock } from "vitest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -35,16 +34,15 @@ describe("RegisterPage", () => {
       }
     });
 
-    const user = userEvent.setup();
     renderWithProviders(<RegisterPage />, { route: "/register" });
 
     expect(screen.queryByLabelText(/perfil/i)).not.toBeInTheDocument();
     expect(screen.getByText("COLABORADOR")).toBeInTheDocument();
 
-    await user.type(screen.getByLabelText(/nome/i), "Novo Usuario");
-    await user.type(screen.getByLabelText(/email/i), "novo@teste.com");
-    await user.type(screen.getByLabelText(/senha/i), "Senha@123");
-    await user.click(screen.getByRole("button", { name: /criar usuario/i }));
+    fireEvent.change(screen.getByLabelText(/nome/i), { target: { value: "Novo Usuario" } });
+    fireEvent.change(screen.getByLabelText(/email/i), { target: { value: "novo@teste.com" } });
+    fireEvent.change(screen.getByLabelText(/senha/i), { target: { value: "Senha@123" } });
+    fireEvent.click(screen.getByRole("button", { name: /criar usuario/i }));
 
     await waitFor(() => {
       expect(mockedApi.post).toHaveBeenCalledWith("/users", {

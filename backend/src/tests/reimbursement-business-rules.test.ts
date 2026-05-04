@@ -70,6 +70,13 @@ function auth(token: string) {
   };
 }
 
+function getFutureExpenseDate() {
+  const date = new Date();
+  date.setUTCDate(date.getUTCDate() + 1);
+
+  return date.toISOString().slice(0, 10);
+}
+
 async function createDraftRequest(
   token = tokens.collaborator,
   data: Partial<{
@@ -170,6 +177,22 @@ describe("reimbursement business rules", () => {
 
     expect(response.status).toBe(400);
     expect(response.body).toMatchObject({
+      statusCode: 400,
+      error: "Bad Request"
+    });
+  });
+
+  it("returns 400 when creating a request with a future expense date", async () => {
+    const response = await request(app).post("/reimbursements").set(auth(tokens.collaborator)).send({
+      categoriaId: activeCategoryId,
+      descricao: "Data futura",
+      valor: 100,
+      dataDespesa: getFutureExpenseDate()
+    });
+
+    expect(response.status).toBe(400);
+    expect(response.body).toMatchObject({
+      message: "Expense date cannot be in the future",
       statusCode: 400,
       error: "Bad Request"
     });
@@ -354,6 +377,24 @@ describe("reimbursement business rules", () => {
     expect(response.body).toMatchObject({
       statusCode: 403,
       error: "Forbidden"
+    });
+  });
+
+  it("returns 400 when editing a request with a future expense date", async () => {
+    const reimbursement = await createDraftRequest();
+
+    const response = await request(app)
+      .put(`/reimbursements/${reimbursement.id}`)
+      .set(auth(tokens.collaborator))
+      .send({
+        dataDespesa: getFutureExpenseDate()
+      });
+
+    expect(response.status).toBe(400);
+    expect(response.body).toMatchObject({
+      message: "Expense date cannot be in the future",
+      statusCode: 400,
+      error: "Bad Request"
     });
   });
 

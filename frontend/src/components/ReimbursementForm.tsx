@@ -48,6 +48,15 @@ function toApiDate(value: string) {
   return new Date(`${value}T00:00:00.000Z`).toISOString();
 }
 
+function getTodayInputValue() {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
 function validateForm(values: ReimbursementFormValues) {
   const errors: ReimbursementFormErrors = {};
   const amount = Number(values.valor);
@@ -62,6 +71,8 @@ function validateForm(values: ReimbursementFormValues) {
 
   if (!values.dataDespesa) {
     errors.dataDespesa = "Informe a data da despesa.";
+  } else if (values.dataDespesa > getTodayInputValue()) {
+    errors.dataDespesa = "A data da despesa nao pode ser futura.";
   }
 
   if (!values.valor) {
@@ -84,6 +95,7 @@ export function ReimbursementForm({
 }: ReimbursementFormProps) {
   const [values, setValues] = useState<ReimbursementFormValues>(initialValues ?? emptyValues);
   const [errors, setErrors] = useState<ReimbursementFormErrors>({});
+  const todayInputValue = getTodayInputValue();
 
   useEffect(() => {
     setValues(initialValues ?? emptyValues);
@@ -164,6 +176,7 @@ export function ReimbursementForm({
             <FormLabel>Data da despesa</FormLabel>
             <Input
               focusBorderColor="red.500"
+              max={todayInputValue}
               type="date"
               value={values.dataDespesa}
               onChange={(event) => setValues((current) => ({ ...current, dataDespesa: event.target.value }))}
