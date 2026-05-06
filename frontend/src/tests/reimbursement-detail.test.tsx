@@ -21,7 +21,7 @@ const mockedApi = api as unknown as {
   get: Mock;
 };
 
-function makeDetail(): ReimbursementDetail {
+function makeDetail(overrides: Partial<ReimbursementDetail> = {}): ReimbursementDetail {
   return {
     anexos: [],
     atualizadoEm: "2026-05-01T00:00:00.000Z",
@@ -47,7 +47,8 @@ function makeDetail(): ReimbursementDetail {
     },
     solicitanteId: "user-colaborador",
     status: "RASCUNHO",
-    valor: 150
+    valor: 150,
+    ...overrides
   };
 }
 
@@ -73,5 +74,45 @@ describe("ReimbursementDetailPage", () => {
 
     expect(await screen.findByText(/Adicione pelo menos um anexo antes de enviar/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Enviar" })).toBeInTheDocument();
+  });
+
+  it("shows secure actions for simulated attachments", async () => {
+    const attachmentUrl = "https://example.com/comprovante.pdf";
+
+    mockedApi.get.mockResolvedValueOnce({
+      data: makeDetail({
+        anexos: [
+          {
+            criadoEm: "2026-05-01T00:00:00.000Z",
+            id: "att-1",
+            nomeArquivo: "comprovante.pdf",
+            tipoArquivo: "PDF",
+            urlArquivo: attachmentUrl
+          }
+        ]
+      })
+    });
+
+    renderWithProviders(
+      <Routes>
+        <Route element={<ReimbursementDetailPage />} path="/reimbursements/:id" />
+      </Routes>,
+      {
+        route: "/reimbursements/req-1",
+        session: createAuthSession("COLABORADOR")
+      }
+    );
+
+    expect(await screen.findByText("comprovante.pdf")).toBeInTheDocument();
+
+    const previewLink = screen.getByRole("link", { name: "Visualizar" });
+    const openLink = screen.getByRole("link", { name: "Baixar/Abrir" });
+
+    expect(previewLink).toHaveAttribute("href", attachmentUrl);
+    expect(previewLink).toHaveAttribute("target", "_blank");
+    expect(previewLink).toHaveAttribute("rel", "noreferrer");
+    expect(openLink).toHaveAttribute("href", attachmentUrl);
+    expect(openLink).toHaveAttribute("target", "_blank");
+    expect(openLink).toHaveAttribute("rel", "noreferrer");
   });
 });

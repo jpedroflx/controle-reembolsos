@@ -84,6 +84,7 @@ const actionSuccessMessages: Record<ReimbursementAction, string> = {
 };
 
 const allowedAttachmentTypes: Array<ReimbursementAttachment["tipoArquivo"]> = ["PDF", "JPG", "JPEG", "PNG"];
+const previewableAttachmentTypes: Array<ReimbursementAttachment["tipoArquivo"]> = ["PDF", "JPG", "JPEG", "PNG"];
 
 const emptyAttachmentForm: AttachmentFormValues = {
   nomeArquivo: "",
@@ -131,6 +132,10 @@ function validateAttachment(values: AttachmentFormValues) {
 
 function getActionKey(reimbursementId: string, action: ReimbursementAction) {
   return `${reimbursementId}:${action}`;
+}
+
+function canPreviewAttachment(fileType: ReimbursementAttachment["tipoArquivo"]) {
+  return previewableAttachmentTypes.includes(fileType);
 }
 
 export function ReimbursementDetailPage() {
@@ -384,6 +389,34 @@ export function ReimbursementDetailPage() {
     );
   }
 
+  function renderAttachmentActions(attachment: ReimbursementAttachment) {
+    return (
+      <ButtonGroup flexWrap="wrap" gap={2} justifyContent="flex-end" size="sm" spacing={0}>
+        {canPreviewAttachment(attachment.tipoArquivo) ? (
+          <Button
+            as="a"
+            href={attachment.urlArquivo}
+            rel="noreferrer"
+            target="_blank"
+            variant="outline"
+          >
+            Visualizar
+          </Button>
+        ) : null}
+        <Button
+          as="a"
+          colorScheme="red"
+          href={attachment.urlArquivo}
+          rel="noreferrer"
+          target="_blank"
+          variant="ghost"
+        >
+          Baixar/Abrir
+        </Button>
+      </ButtonGroup>
+    );
+  }
+
   return (
     <Stack spacing={6}>
       <PageHeader description={id} title="Detalhe da solicitacao" actions={renderActionButtons()} />
@@ -531,6 +564,7 @@ export function ReimbursementDetailPage() {
                       <Th>Tipo</Th>
                       <Th>URL simulada</Th>
                       <Th>Criado em</Th>
+                      <Th textAlign="right">Acoes</Th>
                     </Tr>
                   </Thead>
                   <Tbody>
@@ -541,11 +575,22 @@ export function ReimbursementDetailPage() {
                           <Badge>{attachment.tipoArquivo}</Badge>
                         </Td>
                         <Td>
-                          <ChakraLink color="red.600" href={attachment.urlArquivo} isExternal>
+                          <ChakraLink
+                            color="red.600"
+                            display="block"
+                            href={attachment.urlArquivo}
+                            maxW={{ base: "220px", md: "360px" }}
+                            overflow="hidden"
+                            rel="noreferrer"
+                            target="_blank"
+                            textOverflow="ellipsis"
+                            whiteSpace="nowrap"
+                          >
                             {attachment.urlArquivo}
                           </ChakraLink>
                         </Td>
                         <Td>{formatDateTime(attachment.criadoEm)}</Td>
+                        <Td>{renderAttachmentActions(attachment)}</Td>
                       </Tr>
                     ))}
                   </Tbody>
