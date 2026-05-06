@@ -179,6 +179,39 @@ Todos os usuários criados pelo seed usam a senha `Senha@123`.
 
 O cadastro público cria apenas usuários `COLABORADOR`. Os perfis `GESTOR`, `FINANCEIRO` e `ADMIN` ficam disponíveis pelo seed.
 
+## Collection Postman
+
+A collection para avaliacao manual da API esta em:
+
+```text
+docs/postman/controle-reembolsos.postman_collection.json
+```
+
+Como usar:
+
+1. Inicie a aplicacao localmente com `npm run dev`.
+2. No Postman, importe o arquivo JSON da collection.
+3. Confira a variavel `baseUrl`. O valor padrao e `http://localhost:3333`.
+4. Rode `Health / Health check`.
+5. Rode os requests de login em `Auth` para preencher os tokens:
+   - `collaboratorToken`;
+   - `managerToken`;
+   - `financeToken`;
+   - `adminToken`;
+   - `token`, usado para requests genericos.
+6. Em `Categories`, rode `Criar categoria`. O script salva `categoryId`.
+7. Em `Reimbursements`, rode `Criar solicitacao em rascunho`. O script salva `reimbursementId`.
+8. Use os requests de `History and Attachments` e `Transitions` para validar anexos, historico e mudancas de status.
+
+Os requests usam variaveis como `baseUrl`, `token`, `categoryId` e `reimbursementId`. A collection tambem tenta gravar essas variaveis no Environment ativo do Postman, se houver um selecionado.
+
+Observacoes:
+
+- `Cancel` so funciona enquanto a solicitacao ainda esta em `RASCUNHO`.
+- `Reject` deve ser usado em uma solicitacao `ENVIADA` que ainda nao foi aprovada.
+- `Pay` deve ser usado depois de `Approve`.
+- Anexos continuam simulados: a API salva nome, tipo e URL, mas nao faz upload nem download real.
+
 ## Fluxo manual sugerido
 
 1. Entrar como `colaborador@teste.com`.
