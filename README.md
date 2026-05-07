@@ -90,6 +90,36 @@ npm run dev:backend
 npm run dev:frontend
 ```
 
+## Rodando com Docker Compose
+
+Docker Compose é opcional. O fluxo local com `npm install`, migrations, seed e `npm run dev` continua funcionando normalmente.
+
+Na raiz `controle-reembolsos`:
+
+```powershell
+docker compose up --build -d
+docker compose exec backend npm run prisma:seed
+```
+
+URLs:
+
+```text
+Backend:  http://localhost:3333
+Frontend: http://localhost:5173
+Health:   http://localhost:3333/health
+```
+
+O backend aplica as migrations ao iniciar. O SQLite usa o volume `backend-sqlite-data`, montado em `/app/data`, então os dados não são apagados a cada rebuild.
+
+Para acompanhar logs ou parar os containers:
+
+```powershell
+docker compose logs -f
+docker compose down
+```
+
+Use `docker compose down -v` apenas se quiser apagar o volume e recriar o banco do zero.
+
 ## Testes, typecheck e build
 
 Na raiz `controle-reembolsos`:
@@ -183,6 +213,7 @@ O resumo usa a mesma regra de visibilidade da listagem: colaborador vê apenas o
 - Anexos são simulados: a aplicação salva nome, tipo e URL, sem upload real.
 - A tela de detalhe mostra aviso quando falta anexo obrigatório antes de enviar.
 - Anexos simulados podem ser abertos em nova aba pelos botões `Visualizar` e `Baixar/Abrir`.
+- Docker Compose opcional com backend, frontend e SQLite persistido em volume.
 
 ## Collection Postman
 
@@ -265,7 +296,6 @@ Transições inválidas retornam `400`. Perfis sem permissão retornam `403`.
 - Upload real para storage externo.
 - Recuperação de senha.
 - Refresh token.
-- Docker Compose.
 - Deploy.
 - Testes end-to-end com navegador real.
 
