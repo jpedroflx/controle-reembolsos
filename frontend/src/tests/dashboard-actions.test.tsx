@@ -34,6 +34,15 @@ const categories: Category[] = [
     maxAmount: null,
     name: "Alimentacao",
     updatedAt: "2026-05-01T00:00:00.000Z"
+  },
+  {
+    active: false,
+    createdAt: "2026-05-01T00:00:00.000Z",
+    id: "cat-inativa",
+    attachmentRequiredAboveAmount: null,
+    maxAmount: null,
+    name: "Categoria inativa",
+    updatedAt: "2026-05-01T00:00:00.000Z"
   }
 ];
 
@@ -217,6 +226,31 @@ describe("DashboardPage role actions", () => {
     expect(screen.getByText("Totais por categoria")).toBeInTheDocument();
     expect(screen.getAllByText("Alimentacao").length).toBeGreaterThan(0);
     expect(screen.getAllByText((content) => content.includes("150,00")).length).toBeGreaterThan(0);
+  });
+
+  it("shows list filters, sorting controls and pagination state", async () => {
+    mockDashboardRequests([makeReimbursement("RASCUNHO")], {
+      total: 15,
+      totalPages: 2
+    });
+
+    renderWithProviders(<DashboardPage />, {
+      route: "/dashboard",
+      session: createAuthSession("ADMIN")
+    });
+
+    expect(await screen.findByText("Almoco em viagem")).toBeInTheDocument();
+    expect(screen.getByLabelText("Status")).toBeInTheDocument();
+    expect(screen.getByLabelText("Categoria")).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Alimentacao" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Categoria inativa" })).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Colaborador")).toBeInTheDocument();
+    expect(screen.getByLabelText("Ordenar por")).toBeInTheDocument();
+    expect(screen.getByLabelText("Ordem")).toBeInTheDocument();
+    expect(screen.getByLabelText("Itens por pagina")).toBeInTheDocument();
+    expect(screen.getByText("Pagina 1 de 2")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Anterior" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Proxima" })).toBeEnabled();
   });
 
   it("combines filters, sorting and pagination params", async () => {
