@@ -1,35 +1,14 @@
-# Controle de Solicitações Reembolsos
+# Controle de Solicitações de Reembolso
 
 Aplicação fullstack para controle de solicitações de reembolso, desenvolvida como desafio técnico do programa de estágio da Pitang.
 
-O sistema permite que colaboradores criem solicitações, gestores aprovem ou rejeitem pedidos, o financeiro realize pagamentos e administradores gerenciem categorias e usuários. A aplicação roda localmente com SQLite.
+O sistema permite que colaboradores criem solicitações, gestores aprovem ou rejeitem pedidos, o financeiro realize pagamentos e administradores gerenciem categorias. A aplicação roda localmente com SQLite.
 
 ## Stack
 
-### Backend
+Backend: Node.js, Express, TypeScript, Prisma ORM, SQLite, Zod, JWT, bcrypt, Jest e Supertest.
 
-- Node.js
-- Express
-- TypeScript
-- Prisma ORM
-- SQLite
-- Zod
-- JWT
-- bcrypt
-- Jest
-- Supertest
-
-### Frontend
-
-- Vite
-- React
-- TypeScript
-- React Router
-- Context API
-- Axios
-- Chakra UI
-- Vitest
-- React Testing Library
+Frontend: Vite, React, TypeScript, React Router, Context API, Axios, Chakra UI, Vitest e React Testing Library.
 
 ## Requisitos
 
@@ -39,20 +18,6 @@ O sistema permite que colaboradores criem solicitações, gestores aprovem ou re
 
 Não é necessário instalar SQLite separadamente. O banco é um arquivo local gerenciado pelo Prisma.
 
-## Estrutura
-
-```text
-controle-reembolsos/
-  backend/
-    prisma/
-    src/
-  frontend/
-    src/
-  package.json
-  package-lock.json
-  README.md
-```
-
 ## Instalação
 
 Na raiz `controle-reembolsos`:
@@ -61,41 +26,28 @@ Na raiz `controle-reembolsos`:
 npm install
 ```
 
-## Configuração de ambiente
-
-Crie os arquivos `.env` a partir dos exemplos.
-
-No Windows, na raiz `controle-reembolsos`:
+Crie os arquivos `.env`:
 
 ```powershell
 Copy-Item backend\.env.example backend\.env
 Copy-Item frontend\.env.example frontend\.env
 ```
 
-No Linux/macOS:
-
-```bash
-cp backend/.env.example backend/.env
-cp frontend/.env.example frontend/.env
-```
-
-### backend/.env
+Valores esperados:
 
 ```env
+# backend/.env
 NODE_ENV=development
 PORT=3333
 DATABASE_URL="file:./dev.db"
 JWT_SECRET="change-me-in-local-development"
 CORS_ORIGIN="http://localhost:5173"
-```
 
-### frontend/.env
-
-```env
+# frontend/.env
 VITE_API_URL="http://localhost:3333"
 ```
 
-## Banco de dados e seed
+## Banco de dados
 
 Na raiz `controle-reembolsos`:
 
@@ -104,15 +56,18 @@ npm run prisma:migrate
 npm run prisma:seed
 ```
 
-O banco SQLite fica em:
+O comando `npm run prisma:migrate` aplica as migrations existentes e gera o Prisma Client. Em um clone limpo, ele já cria o banco com os campos extras de categoria, como `maxAmount` e `attachmentRequiredAboveAmount`.
 
-```text
-backend/prisma/dev.db
+Se o banco local já existia antes desses campos, pare o servidor e rode novamente:
+
+```powershell
+npm run prisma:migrate
+npm run prisma:seed
 ```
 
-O seed cria usuários de teste e categorias iniciais.
+O banco SQLite fica em `backend/prisma/dev.db`.
 
-## Executando o projeto
+## Executando
 
 Para iniciar backend e frontend juntos, use um terminal na raiz `controle-reembolsos`:
 
@@ -130,15 +85,8 @@ Health:   http://localhost:3333/health
 
 Para iniciar separadamente:
 
-Terminal 1, na raiz `controle-reembolsos`:
-
 ```powershell
 npm run dev:backend
-```
-
-Terminal 2, na raiz `controle-reembolsos`:
-
-```powershell
 npm run dev:frontend
 ```
 
@@ -152,14 +100,18 @@ npm test
 npm run build
 ```
 
-Para rodar testes separadamente:
+Por workspace:
 
 ```powershell
 npm test -w backend
 npm test -w frontend
+npm run typecheck -w backend
+npm run typecheck -w frontend
+npm run build -w backend
+npm run build -w frontend
 ```
 
-Outros comandos úteis:
+Comandos úteis do Prisma:
 
 ```powershell
 npm run prisma:generate
@@ -177,11 +129,64 @@ Todos os usuários criados pelo seed usam a senha `Senha@123`.
 | FINANCEIRO | financeiro@teste.com | Senha@123 |
 | ADMIN | admin@teste.com | Senha@123 |
 
-O cadastro público cria apenas usuários `COLABORADOR`. Os perfis `GESTOR`, `FINANCEIRO` e `ADMIN` ficam disponíveis pelo seed.
+O cadastro público cria apenas usuários `COLABORADOR`. Perfis `GESTOR`, `FINANCEIRO` e `ADMIN` ficam disponíveis pelo seed.
+
+## Fluxo rápido
+
+1. Entre como `colaborador@teste.com`.
+2. Crie uma solicitação em `Nova solicitação`.
+3. Adicione um anexo simulado enquanto a solicitação estiver em `RASCUNHO`, se desejar.
+4. Envie a solicitação.
+5. Entre como `gestor@teste.com` para aprovar ou rejeitar solicitações `ENVIADAS`.
+6. Entre como `financeiro@teste.com` para pagar solicitações `APROVADAS`.
+7. Entre como `admin@teste.com` para visualizar dados gerais e gerenciar categorias.
+
+## Diferenciais implementados
+
+### Filtros, paginação e ordenação
+
+Na tela `Dashboard`, acima da listagem, é possível combinar:
+
+- filtro por status;
+- filtro por categoria ativa;
+- busca por colaborador por nome ou email, exceto para `COLABORADOR`;
+- ordenação por criação, data da despesa ou valor;
+- ordem crescente ou decrescente;
+- tamanho da página com 5, 10, 20 ou 50 itens;
+- navegação por `Anterior` e `Próxima`.
+
+A API também aceita esses filtros em `GET /reimbursements`:
+
+```text
+?status=ENVIADO&categoriaId=<id>&solicitante=nome-ou-email&sortBy=valor&sortOrder=desc&page=1&pageSize=10
+```
+
+Os filtros respeitam RBAC. Um colaborador continua vendo apenas as próprias solicitações, mesmo tentando buscar outro solicitante.
+
+### Cards de resumo
+
+O `Dashboard` consome `GET /reimbursements/summary` e exibe:
+
+- total de solicitações visíveis para o perfil;
+- valor total;
+- totais por status;
+- totais por categoria.
+
+O resumo usa a mesma regra de visibilidade da listagem: colaborador vê apenas o que é dele, gestor vê `ENVIADO`, financeiro vê `APROVADO` e admin vê dados gerais.
+
+### Regras extras de negócio
+
+- Categorias podem ter `maxAmount`; valores acima do limite são bloqueados na criação e edição.
+- Categorias podem ter `attachmentRequiredAboveAmount`; acima desse valor, a solicitação só pode ser enviada se tiver anexo.
+- Solicitações com `dataDespesa` futura são bloqueadas no backend e no frontend.
+- Categorias inativas não aparecem como opção no frontend e não podem ser usadas em novas solicitações pela API.
+- Anexos são simulados: a aplicação salva nome, tipo e URL, sem upload real.
+- A tela de detalhe mostra aviso quando falta anexo obrigatório antes de enviar.
+- Anexos simulados podem ser abertos em nova aba pelos botões `Visualizar` e `Baixar/Abrir`.
 
 ## Collection Postman
 
-A collection para avaliacao manual da API esta em:
+A collection está em:
 
 ```text
 docs/postman/controle-reembolsos.postman_collection.json
@@ -189,259 +194,71 @@ docs/postman/controle-reembolsos.postman_collection.json
 
 Como usar:
 
-1. Inicie a aplicacao localmente com `npm run dev`.
-2. No Postman, importe o arquivo JSON da collection.
-3. Confira a variavel `baseUrl`. O valor padrao e `http://localhost:3333`.
-4. Rode `Health / Health check`.
-5. Rode os requests de login em `Auth` para preencher os tokens:
-   - `collaboratorToken`;
-   - `managerToken`;
-   - `financeToken`;
-   - `adminToken`;
-   - `token`, usado para requests genericos.
-6. Em `Categories`, rode `Criar categoria`. O script salva `categoryId`.
-7. Em `Reimbursements`, rode `Criar solicitacao em rascunho`. O script salva `reimbursementId`.
-8. Use os requests de `History and Attachments` e `Transitions` para validar anexos, historico e mudancas de status.
+1. Rode `npm run dev` na raiz `controle-reembolsos`.
+2. Importe a collection no Postman.
+3. Confira a variável `baseUrl`, com valor padrão `http://localhost:3333`.
+4. Execute `Health check`.
+5. Execute os logins de cada perfil para preencher os tokens.
+6. Use os requests de categorias, solicitações, transições, histórico e anexos simulados.
 
-Os requests usam variaveis como `baseUrl`, `token`, `categoryId` e `reimbursementId`. A collection tambem tenta gravar essas variaveis no Environment ativo do Postman, se houver um selecionado.
-
-Observacoes:
-
-- `Cancel` so funciona enquanto a solicitacao ainda esta em `RASCUNHO`.
-- `Reject` deve ser usado em uma solicitacao `ENVIADA` que ainda nao foi aprovada.
-- `Pay` deve ser usado depois de `Approve`.
-- Anexos continuam simulados: a API salva nome, tipo e URL, mas nao faz upload nem download real.
-
-## Fluxo manual sugerido
-
-1. Entrar como `colaborador@teste.com`.
-2. Criar uma solicitação em `Nova solicitação`.
-3. Adicionar um anexo simulado enquanto a solicitação estiver em `RASCUNHO`.
-4. Enviar a solicitação.
-5. Sair e entrar como `gestor@teste.com`.
-6. Aprovar ou rejeitar solicitações `ENVIADAS`.
-7. Se aprovar, sair e entrar como `financeiro@teste.com`.
-8. Pagar solicitações `APROVADAS`.
-9. Entrar como `admin@teste.com`.
-10. Criar, editar, ativar e inativar categorias.
-
-## Perfis e permissões
-
-| Perfil | Permissões principais |
-| --- | --- |
-| COLABORADOR | Cria solicitações, lista apenas as próprias, edita/envia/cancela em `RASCUNHO` e adiciona anexos simulados em solicitações próprias em `RASCUNHO`. |
-| GESTOR | Lista solicitações `ENVIADAS`, aprova e rejeita com justificativa obrigatória. |
-| FINANCEIRO | Lista solicitações `APROVADAS` e marca como pagas. |
-| ADMIN | Visualiza dados gerais, lista usuários e gerencia categorias. |
-
-## Status e transições
-
-| Ação | Transição | Perfil |
-| --- | --- | --- |
-| Criar solicitação | inicial `RASCUNHO` | COLABORADOR |
-| Enviar | `RASCUNHO` -> `ENVIADO` | COLABORADOR dono |
-| Aprovar | `ENVIADO` -> `APROVADO` | GESTOR |
-| Rejeitar | `ENVIADO` -> `REJEITADO` | GESTOR |
-| Pagar | `APROVADO` -> `PAGO` | FINANCEIRO |
-| Cancelar | `RASCUNHO` -> `CANCELADO` | COLABORADOR dono |
-
-Transições inválidas retornam `400`. Perfis sem permissão retornam `403`.
+A collection usa variáveis como `baseUrl`, `token`, `collaboratorToken`, `managerToken`, `financeToken`, `adminToken`, `categoryId` e `reimbursementId`. Alguns requests gravam essas variáveis automaticamente no Environment ativo do Postman.
 
 ## Endpoints principais
 
-Rotas protegidas usam:
+Rotas protegidas usam `Authorization: Bearer <token>`.
 
-```http
-Authorization: Bearer <token>
-```
+| Método | Rota | Descrição |
+| --- | --- | --- |
+| GET | `/health` | Health check |
+| POST | `/auth/login` | Login com JWT |
+| POST | `/users` | Cadastro público de colaborador |
+| GET | `/users` | Lista usuários para admin |
+| GET | `/categories` | Lista categorias |
+| POST | `/categories` | Cria categoria para admin |
+| PUT | `/categories/:id` | Edita categoria para admin |
+| GET | `/reimbursements` | Lista solicitações conforme perfil |
+| GET | `/reimbursements/summary` | Resumo do dashboard conforme perfil |
+| POST | `/reimbursements` | Cria solicitação em rascunho |
+| GET | `/reimbursements/:id` | Detalhe da solicitação |
+| PUT | `/reimbursements/:id` | Edita solicitação em rascunho |
+| POST | `/reimbursements/:id/submit` | Envia solicitação |
+| POST | `/reimbursements/:id/approve` | Aprova solicitação |
+| POST | `/reimbursements/:id/reject` | Rejeita solicitação |
+| POST | `/reimbursements/:id/pay` | Marca como paga |
+| POST | `/reimbursements/:id/cancel` | Cancela rascunho |
+| GET | `/reimbursements/:id/history` | Histórico |
+| GET | `/reimbursements/:id/attachments` | Lista anexos simulados |
+| POST | `/reimbursements/:id/attachments` | Cria anexo simulado |
 
-### Autenticação e usuários
+## Permissões e status
 
-| Método | Rota | Perfil | Descrição |
-| --- | --- | --- | --- |
-| GET | `/health` | Público | Verifica se a API está online |
-| POST | `/auth/login` | Público | Autentica email/senha e retorna token JWT |
-| POST | `/users` | Público | Cria usuário `COLABORADOR` com senha hasheada |
-| GET | `/users` | ADMIN | Lista usuários sem senha |
-
-Body de login:
-
-```json
-{
-  "email": "admin@teste.com",
-  "password": "Senha@123"
-}
-```
-
-Body de cadastro:
-
-```json
-{
-  "name": "Novo Usuário",
-  "email": "novo@teste.com",
-  "password": "Senha@123"
-}
-```
-
-Mesmo que o cliente envie um perfil privilegiado no cadastro público, a API cria o usuário como `COLABORADOR`.
-
-### Categorias
-
-| Método | Rota | Perfil | Descrição |
-| --- | --- | --- | --- |
-| GET | `/categories` | Autenticado | Lista categorias |
-| POST | `/categories` | ADMIN | Cria categoria |
-| PUT | `/categories/:id` | ADMIN | Edita nome e status ativo/inativo |
-
-```json
-{
-  "name": "Transporte",
-  "active": true
-}
-```
-
-Categorias inativas não aparecem como opção para novas solicitações no frontend e não podem ser usadas em novas solicitações pela API.
-
-### Solicitações
-
-| Método | Rota | Perfil | Descrição |
-| --- | --- | --- | --- |
-| GET | `/reimbursements` | Autenticado | Lista solicitações conforme o perfil |
-| GET | `/reimbursements/summary` | Autenticado | Retorna totais de dashboard conforme o perfil |
-| POST | `/reimbursements` | COLABORADOR | Cria solicitação em `RASCUNHO` |
-| GET | `/reimbursements/:id` | Autenticado com acesso | Exibe detalhe da solicitação |
-| PUT | `/reimbursements/:id` | COLABORADOR dono | Edita solicitação em `RASCUNHO` |
-
-Query params de listagem:
-
-| Parametro | Descrição |
+| Perfil | Permissões principais |
 | --- | --- |
-| `page` | Página atual. Padrão: `1`. |
-| `pageSize` | Itens por página. Padrão: `10`, máximo: `50`. |
-| `status` | Filtra por `RASCUNHO`, `ENVIADO`, `APROVADO`, `REJEITADO`, `PAGO` ou `CANCELADO`. |
-| `categoriaId` | Filtra por categoria. |
-| `solicitante` | Busca por nome ou email do solicitante. |
-| `sortBy` | Ordena por `criadoEm`, `dataDespesa` ou `valor`. |
-| `sortOrder` | Usa `asc` ou `desc`. Padrão: `desc`. |
+| COLABORADOR | Cria solicitações, vê apenas as próprias, edita/envia/cancela em `RASCUNHO` e adiciona anexos em rascunhos próprios. |
+| GESTOR | Vê solicitações `ENVIADAS`, aprova e rejeita com justificativa obrigatória. |
+| FINANCEIRO | Vê solicitações `APROVADAS` e marca como pagas. |
+| ADMIN | Visualiza dados gerais, lista usuários e gerencia categorias. |
 
-A resposta de `GET /reimbursements` segue o formato:
+Transições:
 
-```json
-{
-  "data": [],
-  "meta": {
-    "page": 1,
-    "pageSize": 10,
-    "total": 0,
-    "totalPages": 0
-  }
-}
+```text
+RASCUNHO -> ENVIADO    COLABORADOR dono
+ENVIADO  -> APROVADO   GESTOR
+ENVIADO  -> REJEITADO  GESTOR
+APROVADO -> PAGO       FINANCEIRO
+RASCUNHO -> CANCELADO  COLABORADOR dono
 ```
 
-Os filtros são combinados com a regra de visibilidade do perfil. Por exemplo, um colaborador continua vendo apenas suas próprias solicitações.
-
-`GET /reimbursements/summary` respeita a mesma visibilidade e aceita os filtros `status`, `categoriaId` e `solicitante`. A resposta contém `totalSolicitacoes`, `valorTotal`, `porStatus` e `porCategoria`.
-
-```json
-{
-  "categoriaId": "id-da-categoria",
-  "descricao": "Almoço em viagem",
-  "valor": 50.75,
-  "dataDespesa": "2026-05-01T00:00:00.000Z"
-}
-```
-
-### Transições, histórico e anexos
-
-| Método | Rota | Perfil | Descrição |
-| --- | --- | --- | --- |
-| POST | `/reimbursements/:id/submit` | COLABORADOR dono | Envia solicitação em rascunho |
-| POST | `/reimbursements/:id/approve` | GESTOR | Aprova solicitação enviada |
-| POST | `/reimbursements/:id/reject` | GESTOR | Rejeita solicitação enviada |
-| POST | `/reimbursements/:id/pay` | FINANCEIRO | Marca solicitação aprovada como paga |
-| POST | `/reimbursements/:id/cancel` | COLABORADOR dono | Cancela solicitação em rascunho |
-| GET | `/reimbursements/:id/history` | Autenticado com acesso | Lista histórico da solicitação |
-| GET | `/reimbursements/:id/attachments` | Autenticado com acesso | Lista anexos simulados |
-| POST | `/reimbursements/:id/attachments` | COLABORADOR dono | Cria anexo simulado em `RASCUNHO` |
-
-Body de rejeição:
-
-```json
-{
-  "justificativaRejeicao": "Comprovante inválido"
-}
-```
-
-Body de anexo simulado:
-
-```json
-{
-  "nomeArquivo": "comprovante.pdf",
-  "urlArquivo": "https://exemplo.com/comprovante.pdf",
-  "tipoArquivo": "PDF"
-}
-```
-
-Tipos permitidos: `PDF`, `JPG`, `JPEG`, `PNG`.
-
-## Formato de erro
-
-A API retorna erros no formato:
-
-```json
-{
-  "message": "Validation error",
-  "statusCode": 400,
-  "error": "Bad Request"
-}
-```
-
-Status usados:
-
-- `400`: validação ou regra de negócio inválida;
-- `401`: autenticação ausente ou inválida;
-- `403`: perfil sem permissão;
-- `404`: recurso não encontrado;
-- `500`: erro inesperado.
-
-## Funcionalidades implementadas
-
-- Login com JWT.
-- Cadastro público restrito a `COLABORADOR`.
-- Senhas armazenadas com bcrypt.
-- Context API e localStorage para sessão no frontend.
-- Rotas públicas e privadas com React Router.
-- RBAC no backend e proteção de rotas no frontend.
-- CRUD de categorias com ativação/inativação.
-- CRUD de solicitações de reembolso.
-- Listagem de solicitações por perfil com paginação, filtros e ordenação na API.
-- Transições de status com permissões por perfil.
-- Rejeição com justificativa obrigatória.
-- Histórico de ações da solicitação.
-- Anexos simulados com tipo permitido.
-- Validações com Zod no backend.
-- Mensagens de erro, loading, sucesso e estados vazios no frontend.
-- Testes de integração no backend.
-- Testes de frontend com React Testing Library.
-- README com instruções de execução e usuários de teste.
-
-## Funcionalidades opcionais implementadas
-
-- Soft delete de categorias por campo `active`.
-- Seeds iniciais de usuários e categorias.
-- Paginação, filtro por status, filtro por categoria, busca por solicitante e ordenação por data/valor em `GET /reimbursements`.
-- Dashboard com totais básicos.
-- Testes adicionais para regras de negócio, histórico, anexos e tratamento de erros.
+Transições inválidas retornam `400`. Perfis sem permissão retornam `403`.
 
 ## Decisões técnicas
 
-- Arquitetura simples em monorepo, adequada ao escopo do desafio.
-- Sem Clean Architecture, DDD ou microsserviços.
+- Monorepo simples, sem Clean Architecture, DDD ou microsserviços.
 - Backend organizado por rotas, controllers, schemas, middlewares e Prisma Client.
 - Prisma com SQLite para facilitar avaliação local.
-- Axios centralizado para enviar `Authorization: Bearer <token>`.
+- Zod valida entrada da API.
+- Frontend usa Context API para sessão e Axios centralizado para enviar o token.
 - O frontend esconde ações por perfil/status, mas a API continua sendo a autoridade.
-- Upload real não foi implementado porque o desafio permite anexo simulado.
 
 ## Fora do escopo intencionalmente
 
@@ -451,8 +268,6 @@ Status usados:
 - Docker Compose.
 - Deploy.
 - Testes end-to-end com navegador real.
-
-Esses itens foram deixados fora para manter o projeto simples, local e fácil de avaliar.
 
 ## Checklist rápido para avaliação
 
@@ -467,13 +282,7 @@ npm run prisma:seed
 npm run dev
 ```
 
-Depois abra:
-
-```text
-http://localhost:5173/login
-```
-
-Entre com:
+Depois abra `http://localhost:5173/login` e entre com:
 
 ```text
 admin@teste.com / Senha@123
