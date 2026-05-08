@@ -18,6 +18,7 @@ vi.mock("../api/http", () => ({
     post: vi.fn(),
     put: vi.fn()
   },
+  setAuthCallbacks: vi.fn(),
   setAuthToken: vi.fn()
 }));
 

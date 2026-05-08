@@ -41,6 +41,9 @@ NODE_ENV=development
 PORT=3333
 DATABASE_URL="file:./dev.db"
 JWT_SECRET="change-me-in-local-development"
+ACCESS_TOKEN_EXPIRES_IN="15m"
+REFRESH_TOKEN_EXPIRES_IN="7d"
+COOKIE_SECURE="false"
 CORS_ORIGIN="http://localhost:5173"
 
 # frontend/.env
@@ -214,6 +217,25 @@ O resumo usa a mesma regra de visibilidade da listagem: colaborador vê apenas o
 - A tela de detalhe mostra aviso quando falta anexo obrigatório antes de enviar.
 - Anexos simulados podem ser abertos em nova aba pelos botões `Visualizar` e `Baixar/Abrir`.
 - Docker Compose opcional com backend, frontend e SQLite persistido em volume.
+- Refresh token opcional com cookie `httpOnly`, rotação e hash persistido no banco.
+
+### Refresh token
+
+O login retorna um access token JWT no corpo da resposta e grava um refresh token opaco em cookie `httpOnly`.
+
+- Access token: usado no header `Authorization: Bearer <token>` para rotas protegidas.
+- Refresh token: usado apenas em `POST /auth/refresh`, não é retornado no JSON e é salvo no banco somente como hash.
+- Logout: `POST /auth/logout` revoga o refresh token atual e limpa o cookie.
+
+Variáveis relacionadas:
+
+```env
+ACCESS_TOKEN_EXPIRES_IN="15m"
+REFRESH_TOKEN_EXPIRES_IN="7d"
+COOKIE_SECURE="false"
+```
+
+Em desenvolvimento local, `COOKIE_SECURE=false` permite cookies em HTTP. Em produção com HTTPS, use `COOKIE_SECURE=true`.
 
 ## Collection Postman
 
@@ -230,9 +252,13 @@ Como usar:
 3. Confira a variável `baseUrl`, com valor padrão `http://localhost:3333`.
 4. Execute `Health check`.
 5. Execute os logins de cada perfil para preencher os tokens.
-6. Use os requests de categorias, solicitações, transições, histórico e anexos simulados.
+6. Se quiser testar renovação, execute `Auth / Refresh token`; o Postman usa o cookie `refreshToken` gravado pelo login.
+7. Use `Auth / Logout` para revogar o refresh token atual.
+8. Use os requests de categorias, solicitações, transições, histórico e anexos simulados.
 
 A collection usa variáveis como `baseUrl`, `token`, `collaboratorToken`, `managerToken`, `financeToken`, `adminToken`, `categoryId` e `reimbursementId`. Alguns requests gravam essas variáveis automaticamente no Environment ativo do Postman.
+
+Mantenha o cookie jar do Postman habilitado para `localhost`, pois o refresh token é `httpOnly` e fica no cookie, não em variável da collection.
 
 ## Endpoints principais
 
@@ -242,6 +268,8 @@ Rotas protegidas usam `Authorization: Bearer <token>`.
 | --- | --- | --- |
 | GET | `/health` | Health check |
 | POST | `/auth/login` | Login com JWT |
+| POST | `/auth/refresh` | Renova access token usando cookie httpOnly |
+| POST | `/auth/logout` | Revoga refresh token atual |
 | POST | `/users` | Cadastro público de colaborador |
 | GET | `/users` | Lista usuários para admin |
 | GET | `/categories` | Lista categorias |
@@ -295,7 +323,6 @@ Transições inválidas retornam `400`. Perfis sem permissão retornam `403`.
 
 - Upload real para storage externo.
 - Recuperação de senha.
-- Refresh token.
 - Deploy.
 - Testes end-to-end com navegador real.
 

@@ -1,6 +1,7 @@
 import { Role } from "@prisma/client";
 import bcrypt from "bcrypt";
 import request from "supertest";
+import type { Response } from "supertest";
 
 import { app } from "../app";
 import { prisma } from "../lib/prisma";
@@ -28,13 +29,46 @@ async function upsertTestUser(email: string, role: Role) {
   });
 }
 
+function getRefreshCookie(response: Response) {
+  const setCookie = response.headers["set-cookie"];
+  const cookies = Array.isArray(setCookie) ? setCookie : [setCookie].filter(Boolean);
+  const refreshCookie = cookies.find((cookie) => cookie.startsWith("refreshToken="));
+
+  expect(refreshCookie).toEqual(expect.any(String));
+
+  return refreshCookie!.split(";")[0];
+}
+
 describe("auth and user routes", () => {
+  let adminId: string;
+  let collaboratorId: string;
+
   beforeAll(async () => {
-    await upsertTestUser(adminEmail, Role.ADMIN);
-    await upsertTestUser(collaboratorEmail, Role.COLABORADOR);
+    const [admin, collaborator] = await Promise.all([
+      upsertTestUser(adminEmail, Role.ADMIN),
+      upsertTestUser(collaboratorEmail, Role.COLABORADOR)
+    ]);
+
+    adminId = admin.id;
+    collaboratorId = collaborator.id;
+
+    await prisma.refreshToken.deleteMany({
+      where: {
+        userId: {
+          in: [adminId, collaboratorId]
+        }
+      }
+    });
   });
 
   afterAll(async () => {
+    await prisma.refreshToken.deleteMany({
+      where: {
+        userId: {
+          in: [adminId, collaboratorId].filter(Boolean)
+        }
+      }
+    });
     await prisma.$disconnect();
   });
 
@@ -46,12 +80,189 @@ describe("auth and user routes", () => {
 
     expect(response.status).toBe(200);
     expect(response.body.token).toEqual(expect.any(String));
+    expect(response.body).not.toHaveProperty("refreshToken");
     expect(response.body.user).toMatchObject({
       email: adminEmail,
       role: Role.ADMIN
     });
     expect(response.body.user).not.toHaveProperty("password");
     expect(response.body.user).not.toHaveProperty("passwordHash");
+    expect(getRefreshCookie(response)).toMatch(/^refreshToken=.+/);
+
+    const storedRefreshToken = await prisma.refreshToken.findFirst({
+      where: {
+        userId: adminId,
+        revokedAt: null
+      }
+    });
+
+    expect(storedRefreshToken).toMatchObject({
+      userId: adminId
+    });
+    expect(storedRefreshToken?.tokenHash).toEqual(expect.any(String));
+  });
+
+  it("refreshes access token and rotates the refresh token", async () => {
+    await prisma.refreshToken.deleteMany({
+      where: { userId: adminId }
+    });
+
+    const loginResponse = await request(app).post("/auth/login").send({
+      email: adminEmail,
+      password: testPassword
+    });
+    const refreshCookie = getRefreshCookie(loginResponse);
+    const originalRefreshToken = await prisma.refreshToken.findFirstOrThrow({
+      where: {
+        userId: adminId,
+        revokedAt: null
+      }
+    });
+
+    const response = await request(app)
+      .post("/auth/refresh")
+      .set("Cookie", refreshCookie);
+
+    expect(response.status).toBe(200);
+    expect(response.body.token).toEqual(expect.any(String));
+    expect(response.body).not.toHaveProperty("refreshToken");
+    expect(response.body.user).toMatchObject({
+      email: adminEmail,
+      role: Role.ADMIN
+    });
+    expect(getRefreshCookie(response)).toMatch(/^refreshToken=.+/);
+
+    const revokedOriginalToken = await prisma.refreshToken.findUniqueOrThrow({
+      where: {
+        id: originalRefreshToken.id
+      }
+    });
+    const activeTokens = await prisma.refreshToken.findMany({
+      where: {
+        userId: adminId,
+        revokedAt: null
+      }
+    });
+
+    expect(revokedOriginalToken.revokedAt).toBeInstanceOf(Date);
+    expect(activeTokens).toHaveLength(1);
+    expect(activeTokens[0].id).not.toBe(originalRefreshToken.id);
+  });
+
+  it("returns 401 when refreshing without a cookie", async () => {
+    const response = await request(app).post("/auth/refresh");
+
+    expect(response.status).toBe(401);
+    expect(response.body).toEqual({
+      message: "Refresh token is required",
+      statusCode: 401,
+      error: "Unauthorized"
+    });
+  });
+
+  it("returns 401 when refreshing with an expired refresh token", async () => {
+    await prisma.refreshToken.deleteMany({
+      where: { userId: adminId }
+    });
+
+    const loginResponse = await request(app).post("/auth/login").send({
+      email: adminEmail,
+      password: testPassword
+    });
+    const refreshCookie = getRefreshCookie(loginResponse);
+    const storedRefreshToken = await prisma.refreshToken.findFirstOrThrow({
+      where: {
+        userId: adminId,
+        revokedAt: null
+      }
+    });
+
+    await prisma.refreshToken.update({
+      where: { id: storedRefreshToken.id },
+      data: {
+        expiresAt: new Date(Date.now() - 1000)
+      }
+    });
+
+    const response = await request(app)
+      .post("/auth/refresh")
+      .set("Cookie", refreshCookie);
+
+    expect(response.status).toBe(401);
+    expect(response.body).toEqual({
+      message: "Invalid or expired refresh token",
+      statusCode: 401,
+      error: "Unauthorized"
+    });
+  });
+
+  it("returns 401 when refreshing with a revoked refresh token", async () => {
+    await prisma.refreshToken.deleteMany({
+      where: { userId: adminId }
+    });
+
+    const loginResponse = await request(app).post("/auth/login").send({
+      email: adminEmail,
+      password: testPassword
+    });
+    const refreshCookie = getRefreshCookie(loginResponse);
+    const storedRefreshToken = await prisma.refreshToken.findFirstOrThrow({
+      where: {
+        userId: adminId,
+        revokedAt: null
+      }
+    });
+
+    await prisma.refreshToken.update({
+      where: { id: storedRefreshToken.id },
+      data: {
+        revokedAt: new Date()
+      }
+    });
+
+    const response = await request(app)
+      .post("/auth/refresh")
+      .set("Cookie", refreshCookie);
+
+    expect(response.status).toBe(401);
+    expect(response.body).toEqual({
+      message: "Invalid or expired refresh token",
+      statusCode: 401,
+      error: "Unauthorized"
+    });
+  });
+
+  it("logs out and revokes the current refresh token", async () => {
+    await prisma.refreshToken.deleteMany({
+      where: { userId: adminId }
+    });
+
+    const loginResponse = await request(app).post("/auth/login").send({
+      email: adminEmail,
+      password: testPassword
+    });
+    const refreshCookie = getRefreshCookie(loginResponse);
+    const storedRefreshToken = await prisma.refreshToken.findFirstOrThrow({
+      where: {
+        userId: adminId,
+        revokedAt: null
+      }
+    });
+
+    const response = await request(app)
+      .post("/auth/logout")
+      .set("Cookie", refreshCookie);
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      message: "Logout successful"
+    });
+
+    const revokedRefreshToken = await prisma.refreshToken.findUniqueOrThrow({
+      where: { id: storedRefreshToken.id }
+    });
+
+    expect(revokedRefreshToken.revokedAt).toBeInstanceOf(Date);
   });
 
   it("rejects login with an invalid password", async () => {
@@ -74,6 +285,19 @@ describe("auth and user routes", () => {
     expect(response.status).toBe(401);
     expect(response.body).toEqual({
       message: "Authentication token is required",
+      statusCode: 401,
+      error: "Unauthorized"
+    });
+  });
+
+  it("returns 401 when accessing a protected route with an invalid token", async () => {
+    const response = await request(app)
+      .get("/users")
+      .set("Authorization", "Bearer token-invalido");
+
+    expect(response.status).toBe(401);
+    expect(response.body).toEqual({
+      message: "Invalid or expired authentication token",
       statusCode: 401,
       error: "Unauthorized"
     });

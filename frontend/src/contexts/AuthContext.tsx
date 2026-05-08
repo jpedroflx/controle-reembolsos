@@ -1,6 +1,6 @@
-import { createContext, type PropsWithChildren, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, type PropsWithChildren, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
-import { setAuthToken } from "../api/http";
+import { api, setAuthCallbacks, setAuthToken } from "../api/http";
 
 export type UserRole = "COLABORADOR" | "GESTOR" | "FINANCEIRO" | "ADMIN";
 
@@ -19,6 +19,8 @@ export type AuthSession = {
 type AuthContextValue = {
   clearSession: () => void;
   isAuthenticated: boolean;
+  logout: () => Promise<void>;
+  refreshSession: () => Promise<boolean>;
   setSession: (session: AuthSession) => void;
   token: string | null;
   user: AuthUser | null;
@@ -103,28 +105,62 @@ export function AuthProvider({ children }: PropsWithChildren) {
     return storedSession;
   });
 
+  const clearSession = useCallback(() => {
+    window.localStorage.removeItem(STORAGE_KEY);
+    setAuthToken(null);
+    setStoredSession(null);
+  }, []);
+
+  const setSession = useCallback((nextSession: AuthSession) => {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextSession));
+    setAuthToken(nextSession.token);
+    setStoredSession(nextSession);
+  }, []);
+
+  const refreshSession = useCallback(async () => {
+    try {
+      const response = await api.post<AuthSession>("/auth/refresh");
+      setSession(response.data);
+
+      return true;
+    } catch {
+      clearSession();
+
+      return false;
+    }
+  }, [clearSession, setSession]);
+
+  const logout = useCallback(async () => {
+    try {
+      await api.post("/auth/logout");
+    } finally {
+      clearSession();
+    }
+  }, [clearSession]);
+
   useEffect(() => {
-    setAuthToken(session?.token ?? null);
-  }, [session]);
+    setAuthCallbacks({
+      onSessionRefreshed: setSession,
+      onUnauthorized: clearSession
+    });
+
+    return () => {
+      setAuthCallbacks({});
+    };
+  }, [clearSession, setSession]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
-      clearSession: () => {
-        window.localStorage.removeItem(STORAGE_KEY);
-        setAuthToken(null);
-        setStoredSession(null);
-      },
+      clearSession,
       isAuthenticated: Boolean(session?.token),
-      setSession: (nextSession) => {
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextSession));
-        setAuthToken(nextSession.token);
-        setStoredSession(nextSession);
-      },
+      logout,
+      refreshSession,
+      setSession,
       token: session?.token ?? null,
       user: session?.user ?? null,
       userRole: session?.user.role ?? null
     }),
-    [session]
+    [clearSession, logout, refreshSession, session, setSession]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

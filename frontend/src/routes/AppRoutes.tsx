@@ -1,4 +1,5 @@
 import { Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
 
 import { AppLayout } from "../layouts/AppLayout";
 import { CategoriesPage } from "../pages/CategoriesPage";
@@ -27,8 +28,43 @@ function PublicRoute() {
 }
 
 function PrivateRoute({ allowedRoles }: PrivateRouteProps) {
-  const { isAuthenticated, userRole } = useAuth();
+  const { isAuthenticated, refreshSession, userRole } = useAuth();
   const location = useLocation();
+  const [hasTriedRefresh, setHasTriedRefresh] = useState(isAuthenticated);
+  const [isCheckingRefresh, setIsCheckingRefresh] = useState(false);
+
+  useEffect(() => {
+    let isActive = true;
+
+    if (isAuthenticated || hasTriedRefresh) {
+      return undefined;
+    }
+
+    setIsCheckingRefresh(true);
+
+    refreshSession()
+      .finally(() => {
+        if (isActive) {
+          setHasTriedRefresh(true);
+          setIsCheckingRefresh(false);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [hasTriedRefresh, isAuthenticated, refreshSession]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      setHasTriedRefresh(true);
+      setIsCheckingRefresh(false);
+    }
+  }, [isAuthenticated]);
+
+  if (!isAuthenticated && (!hasTriedRefresh || isCheckingRefresh)) {
+    return null;
+  }
 
   if (!isAuthenticated) {
     return <Navigate replace state={{ from: location.pathname }} to="/login" />;

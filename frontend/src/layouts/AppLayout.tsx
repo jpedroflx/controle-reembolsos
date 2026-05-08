@@ -26,14 +26,14 @@ const navigationItems: NavigationItem[] = [
 ];
 
 export function AppLayout() {
-  const { clearSession, user, userRole } = useAuth();
+  const { logout, user, userRole } = useAuth();
   const navigate = useNavigate();
   const visibleNavigationItems = navigationItems.filter(
     (item) => !item.allowedRoles || (userRole && item.allowedRoles.includes(userRole))
   );
 
-  function handleLogout() {
-    clearSession();
+  async function handleLogout() {
+    await logout();
     navigate("/login", { replace: true });
   }
 
