@@ -323,6 +323,11 @@ export function DashboardPage() {
       return;
     }
 
+    if (trimmedReason.length < 50) {
+      setRejectionError("Dê uma justificativa de no mínimo 50 caracteres.");
+      return;
+    }
+
     await runTransition(rejectTarget, "reject", {
       justificativaRejeicao: trimmedReason
     });

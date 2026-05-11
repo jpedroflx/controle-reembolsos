@@ -267,6 +267,11 @@ export function ReimbursementDetailPage() {
       return;
     }
 
+    if (trimmedReason.length < 50) {
+      setRejectionError("Dê uma justificativa de no mínimo 50 caracteres.");
+      return;
+    }
+
     const didReject = await runTransition("reject", {
       justificativaRejeicao: trimmedReason
     });

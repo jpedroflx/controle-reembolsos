@@ -51,7 +51,7 @@ export const rejectReimbursementSchema = z.object({
     id: z.string().min(1)
   }),
   body: z.object({
-    justificativaRejeicao: z.string().trim().min(1)
+    justificativaRejeicao: z.string().trim().min(50, "A justificativa para uma rejeição deve conter pelo menos 50 caracteres")
   })
 });
 
